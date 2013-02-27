@@ -12,7 +12,7 @@ BASE_URL = 'https://api.themoviedb.org/3/'
 TMDB_CONFIG_URL = BASE_URL + 'configuration?api_key=a3dc111e66105f6387e99393813ae4d5'
 TMDB_MOVIE_URL = BASE_URL + 'movie/%s?api_key=a3dc111e66105f6387e99393813ae4d5&append_to_response=releases,casts&language=%s'
 TMDB_IMAGES_URL = BASE_URL + 'movie/%s/images?api_key=a3dc111e66105f6387e99393813ae4d5'
-TMDB_SEARCH_URL = BASE_URL + 'search/movie?api_key=a3dc111e66105f6387e99393813ae4d5&query=%s&year=%s&language=%s'
+TMDB_SEARCH_URL = BASE_URL + 'search/movie?api_key=a3dc111e66105f6387e99393813ae4d5&query=%s&year=%s&language=%s&include_adult=%s'
 
 ARTWORK_ITEM_LIMIT = 15
 REQUEST_RETRY_LIMIT = 3
@@ -96,7 +96,7 @@ class TMDbAgent(Agent.Movies):
       else:
         year = ''
 
-      tmdb_dict = self.get_json(url=TMDB_SEARCH_URL % (String.Quote(media.name), year, lang))
+      tmdb_dict = self.get_json(url=TMDB_SEARCH_URL % (String.Quote(media.name), year, lang, str(Prefs['adult'])))
 
       if tmdb_dict and 'results' in tmdb_dict:
         for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):

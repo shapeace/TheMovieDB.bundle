@@ -7,13 +7,19 @@
     },
     {
         "id": "localart",
-        "label": "Prefer localized artwork",
+        "label": "Prefer artwork based on section language",
         "type": "bool",
         "default": "true"
     },
     {
+        "id": "adult",
+        "label": "Include adult content",
+        "type": "bool",
+        "default": "false"
+    },
+    {
         "id": "country",
-        "label": "Country",
+        "label": "Country (used for release date and content rating)",
         "type": "enum",
         "values": [
             "",
