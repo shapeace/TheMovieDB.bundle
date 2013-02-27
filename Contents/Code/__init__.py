@@ -96,7 +96,11 @@ class TMDbAgent(Agent.Movies):
       else:
         year = ''
 
-      tmdb_dict = self.get_json(url=TMDB_SEARCH_URL % (String.Quote(media.name), year, lang, str(Prefs['adult'])))
+      include_adult = 'false'
+      if Prefs['adult']:
+        include_adult = 'true'
+
+      tmdb_dict = self.get_json(url=TMDB_SEARCH_URL % (String.Quote(media.name), year, lang, include_adult))
 
       if tmdb_dict and 'results' in tmdb_dict:
         for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
