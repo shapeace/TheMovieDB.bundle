@@ -84,55 +84,72 @@ class TMDbAgent(Agent.Movies):
   accepts_from = ['com.plexapp.agents.localmedia']
   contributes_to = ['com.plexapp.agents.imdb']
 
-  def search(self, results, media, lang):
+  def search(self, results, media, lang, manual):
+    # If search is initiated by a different, primary metadata agent.
+    # This requires the other agent to use the IMDb id as key.
     if media.primary_metadata is not None and RE_IMDB_ID.search(media.primary_metadata.id):
       results.Append(MetadataSearchResult(
         id = media.primary_metadata.id,
         score = 100
       ))
     else:
-      if media.year and int(media.year) > 1900:
-        year = media.year
+      # If this a manual search (Fix Incorrect Match) and we get an IMDb id as input.
+      if manual and RE_IMDB_ID.search(media.name):
+        tmdb_dict = self.get_json(url=TMDB_MOVIE_URL % (media.name, lang))
+
+        if tmdb_dict and 'id' in tmdb_dict:
+          results.Append(MetadataSearchResult(
+            id = str(tmdb_dict['id']),
+            name = tmdb_dict['title'],
+            year = int(tmdb_dict['release_date'].split('-')[0]),
+            score = 100,
+            lang = lang
+          ))
+
+      # If this is an automatic search and TheMovieDB agent is used as a primary agent.
       else:
-        year = ''
+        if media.year and int(media.year) > 1900:
+          year = media.year
+        else:
+          year = ''
 
-      include_adult = 'false'
-      if Prefs['adult']:
-        include_adult = 'true'
+        include_adult = 'false'
+        if Prefs['adult']:
+          include_adult = 'true'
 
-      tmdb_dict = self.get_json(url=TMDB_SEARCH_URL % (String.Quote(media.name), year, lang, include_adult))
+        tmdb_dict = self.get_json(url=TMDB_SEARCH_URL % (String.Quote(media.name), year, lang, include_adult))
 
-      if tmdb_dict and 'results' in tmdb_dict:
-        for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
-          score = 90
-          score = score - abs(String.LevenshteinDistance(movie['title'].lower(), media.name.lower()))
+        if tmdb_dict and 'results' in tmdb_dict:
+          for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
+            score = 90
+            score = score - abs(String.LevenshteinDistance(movie['title'].lower(), media.name.lower()))
 
-          # Adjust score slightly for 'popularity' (helpful for similar or identical titles when no media.year is present)
-          score = score - (5 * i)
+            # Adjust score slightly for 'popularity' (helpful for similar or identical titles when no media.year is present)
+            score = score - (5 * i)
 
-          if 'release_date' in movie and movie['release_date'] != '':
-            release_year = int(movie['release_date'].split('-')[0])
-          else:
-            release_year = None
-
-          if media.year and int(media.year) > 1900 and release_year:
-            year_diff = abs(int(media.year) - release_year)
-
-            if year_diff <= 1:
-              score = score + 10
+            if 'release_date' in movie and movie['release_date'] != '':
+              release_year = int(movie['release_date'].split('-')[0])
             else:
-              score = score - (5 * year_diff)
+              release_year = None
 
-          if score <= 0:
-            continue
-          else:
-            results.Append(MetadataSearchResult(
-              id = str(movie['id']),
-              name = movie['title'],
-              year = release_year,
-              score = score,
-              lang = lang
-            ))
+            if media.year and int(media.year) > 1900 and release_year:
+              year_diff = abs(int(media.year) - release_year)
+
+              if year_diff <= 1:
+                score = score + 10
+              else:
+                score = score - (5 * year_diff)
+
+            if score <= 0:
+              continue
+            else:
+              results.Append(MetadataSearchResult(
+                id = str(movie['id']),
+                name = movie['title'],
+                year = release_year,
+                score = score,
+                lang = lang
+              ))
 
   def update(self, metadata, media, lang):
     proxy = Proxy.Preview
