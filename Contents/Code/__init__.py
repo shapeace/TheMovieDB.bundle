@@ -1,4 +1,4 @@
-# TheMovieDB
+# The Movie Database
 # Multi-language support added by Aqntbghd
 # 3.0 API update by ToMM
 
@@ -76,7 +76,7 @@ def Start():
 
 ####################################################################################################
 class TMDbAgent(Agent.Movies):
-  name = 'TheMovieDB'
+  name = 'The Movie Database'
   languages = [Locale.Language.English, Locale.Language.Swedish, Locale.Language.French,
                Locale.Language.Spanish, Locale.Language.Dutch, Locale.Language.German,
                Locale.Language.Italian, Locale.Language.Danish]
@@ -106,7 +106,7 @@ class TMDbAgent(Agent.Movies):
             lang = lang
           ))
 
-      # If this is an automatic search and TheMovieDB agent is used as a primary agent.
+      # If this is an automatic search and The Movie Database agent is used as a primary agent.
       else:
         if media.year and int(media.year) > 1900:
           year = media.year
@@ -316,11 +316,11 @@ class TMDbAgent(Agent.Movies):
       try:
         tmdb_dict = JSON.ObjectFromURL(url, sleep=2.0, cacheTime=cache_time)
       except:
-        Log('Error fetching JSON from TheMovieDB, will try %s more time(s) before giving up.', str(t))
+        Log('Error fetching JSON from The Movie Database, will try %s more time(s) before giving up.', str(t))
         time.sleep(5)
 
       if isinstance(tmdb_dict, dict):
         return tmdb_dict
 
-    Log('Error fetching JSON from TheMovieDB')
+    Log('Error fetching JSON from The Movie Database.')
     return None
