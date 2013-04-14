@@ -127,7 +127,7 @@ class TMDbAgent(Agent.Movies):
             # Adjust score slightly for 'popularity' (helpful for similar or identical titles when no media.year is present)
             score = score - (5 * i)
 
-            if 'release_date' in movie and movie['release_date'] != '':
+            if 'release_date' in movie and movie['release_date']:
               release_year = int(movie['release_date'].split('-')[0])
             else:
               release_year = None
@@ -309,18 +309,11 @@ class TMDbAgent(Agent.Movies):
     metadata.art.validate_keys(valid_names)
 
   def get_json(self, url, cache_time=CACHE_1MONTH):
-    # try n times waiting 5 seconds in between if something goes wrong
     tmdb_dict = None
-
-    for t in reversed(range(REQUEST_RETRY_LIMIT)):
-      try:
-        tmdb_dict = JSON.ObjectFromURL(url, sleep=2.0, cacheTime=cache_time)
-      except:
-        Log('Error fetching JSON from The Movie Database, will try %s more time(s) before giving up.', str(t))
-        time.sleep(5)
-
-      if isinstance(tmdb_dict, dict):
-        return tmdb_dict
-
-    Log('Error fetching JSON from The Movie Database.')
-    return None
+    try:
+      tmdb_dict = JSON.ObjectFromURL(url, sleep=2.0, cacheTime=cache_time)
+    except:
+      Log('Error fetching JSON from The Movie Database.')
+      
+    return tmdb_dict
+    
