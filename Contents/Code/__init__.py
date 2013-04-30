@@ -75,6 +75,15 @@ def Start():
   HTTP.Headers['Accept'] = 'application/json'
 
 ####################################################################################################
+@expose
+def GetImdbId(tmdb_id, lang='en'):
+  tmdb_dict = TMDbAgent.get_json(url=TMDB_MOVIE_URL % (tmdb_id, lang))
+
+  if isinstance(tmdb_dict, dict) and 'imdb_id' in tmdb_dict and RE_IMDB_ID.search(tmdb_dict['imdb_id']):
+    return tmdb_dict['imdb_id']
+  return None
+
+####################################################################################################
 class TMDbAgent(Agent.Movies):
   name = 'The Movie Database'
   languages = [Locale.Language.English, Locale.Language.Swedish, Locale.Language.French,
@@ -308,7 +317,8 @@ class TMDbAgent(Agent.Movies):
 
     metadata.art.validate_keys(valid_names)
 
-  def get_json(self, url, cache_time=CACHE_1MONTH):
+  @staticmethod
+  def get_json(url, cache_time=CACHE_1MONTH):
     tmdb_dict = None
     try:
       tmdb_dict = JSON.ObjectFromURL(url, sleep=2.0, cacheTime=cache_time)
@@ -316,4 +326,3 @@ class TMDbAgent(Agent.Movies):
       Log('Error fetching JSON from The Movie Database.')
       
     return tmdb_dict
-    
