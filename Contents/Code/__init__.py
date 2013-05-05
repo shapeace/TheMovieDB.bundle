@@ -86,9 +86,20 @@ def GetImdbId(tmdb_id, lang='en'):
 ####################################################################################################
 class TMDbAgent(Agent.Movies):
   name = 'The Movie Database'
-  languages = [Locale.Language.English, Locale.Language.Swedish, Locale.Language.French,
-               Locale.Language.Spanish, Locale.Language.Dutch, Locale.Language.German,
-               Locale.Language.Italian, Locale.Language.Danish]
+  
+  # TMDB does not seem to have an official set of supported languages.  Users can register and 'translate'
+  # any movie to any ISO 639-1 language.  The following is a realistic list from a popular title.
+  # This agent falls back to English metadata and sorts out foreign artwork to to ensure the best
+  # user experience when less common languages are chosen.
+
+  languages = [
+               Locale.Language.English, Locale.Language.Czech, Locale.Language.Danish, Locale.Language.German,
+               Locale.Language.Greek, Locale.Language.Spanish, Locale.Language.Finnish, Locale.Language.French,
+               Locale.Language.Hebrew, Locale.Language.Croatian, Locale.Language.Hungarian, Locale.Language.Italian,
+               Locale.Language.Latvian, Locale.Language.Dutch, Locale.Language.Norwegian, Locale.Language.Polish,
+               Locale.Language.Portuguese, Locale.Language.Russian, Locale.Language.Slovak, Locale.Language.Swedish,
+               Locale.Language.Thai, Locale.Language.Turkish, Locale.Language.Vietnamese, Locale.Language.Chinese
+              ]
   primary_provider = True
   accepts_from = ['com.plexapp.agents.localmedia']
   contributes_to = ['com.plexapp.agents.imdb']
@@ -163,7 +174,10 @@ class TMDbAgent(Agent.Movies):
   def update(self, metadata, media, lang):
     proxy = Proxy.Preview
     tmdb_dict = self.get_json(url=TMDB_MOVIE_URL % (metadata.id, lang))
-    # This second request is necessary since full art/poster lists are not returned if they don't exactly match the language
+    if tmdb_dict['overview'] is None:
+      # Retry the query with no language specified if we didn't get anything from the initial request.
+      tmdb_dict = self.get_json(url=TMDB_MOVIE_URL % (metadata.id, ''))
+    # This additional request is necessary since full art/poster lists are not returned if they don't exactly match the language
     tmdb_images_dict = self.get_json(url=TMDB_IMAGES_URL % metadata.id)
 
     if tmdb_dict is None or tmdb_images_dict is None:
