@@ -282,72 +282,74 @@ class TMDbAgent(Agent.Movies):
     # 5 and 6 or zero.  Consider both of these, weighting them according to the POSTER_SCORE_RATIO.
 
     # No votes get zero, use TMDB's apparent initial Baysean prior mean of 5 instead.
-    max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['posters']])
-    max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['posters']]) or 1
+    if tmdb_images_dict['posters']:
+      max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['posters']])
+      max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['posters']]) or 1
 
-    valid_names = list()
-    for i, poster in enumerate(tmdb_images_dict['posters']):
+      valid_names = list()
+      for i, poster in enumerate(tmdb_images_dict['posters']):
 
-      score = (poster['vote_average'] / max_average) * POSTER_SCORE_RATIO
-      score += (poster['vote_count'] / max_count) * (1 - POSTER_SCORE_RATIO)
-      tmdb_images_dict['posters'][i]['score'] = score
+        score = (poster['vote_average'] / max_average) * POSTER_SCORE_RATIO
+        score += (poster['vote_count'] / max_count) * (1 - POSTER_SCORE_RATIO)
+        tmdb_images_dict['posters'][i]['score'] = score
 
-      # Boost the score for localized posters (according to the preference).
-      if Prefs['localart']:
-        if poster['iso_639_1'] == lang:
-          tmdb_images_dict['posters'][i]['score'] = poster['score'] + 1
-    
-      # Discount score for foreign posters.
-      if poster['iso_639_1'] != lang and poster['iso_639_1'] is not None and poster['iso_639_1'] != 'en':
-        tmdb_images_dict['posters'][i]['score'] = poster['score'] - 1
+        # Boost the score for localized posters (according to the preference).
+        if Prefs['localart']:
+          if poster['iso_639_1'] == lang:
+            tmdb_images_dict['posters'][i]['score'] = poster['score'] + 1
+      
+        # Discount score for foreign posters.
+        if poster['iso_639_1'] != lang and poster['iso_639_1'] is not None and poster['iso_639_1'] != 'en':
+          tmdb_images_dict['posters'][i]['score'] = poster['score'] - 1
 
-    for i, poster in enumerate(sorted(tmdb_images_dict['posters'], key=lambda k: k['score'], reverse=True)):
-      if i > ARTWORK_ITEM_LIMIT:
-        break
-      else:
-        poster_url = config_dict['images']['base_url'] + 'original' + poster['file_path']
-        thumb_url = config_dict['images']['base_url'] + 'w154' + poster['file_path']
-        valid_names.append(poster_url)
+      for i, poster in enumerate(sorted(tmdb_images_dict['posters'], key=lambda k: k['score'], reverse=True)):
+        if i > ARTWORK_ITEM_LIMIT:
+          break
+        else:
+          poster_url = config_dict['images']['base_url'] + 'original' + poster['file_path']
+          thumb_url = config_dict['images']['base_url'] + 'w154' + poster['file_path']
+          valid_names.append(poster_url)
 
-        if poster_url not in metadata.posters:
-          try: metadata.posters[poster_url] = proxy(HTTP.Request(thumb_url), sort_order=i+1)
-          except: pass
+          if poster_url not in metadata.posters:
+            try: metadata.posters[poster_url] = proxy(HTTP.Request(thumb_url), sort_order=i+1)
+            except: pass
 
-    metadata.posters.validate_keys(valid_names)
+      metadata.posters.validate_keys(valid_names)
 
     # Backdrops.
-    max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['backdrops']])
-    max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['backdrops']]) or 1
+    if tmdb_images_dict['backdrops']:
+      max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['backdrops']])
+      max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['backdrops']]) or 1
 
-    valid_names = list()
-    for i, backdrop in enumerate(tmdb_images_dict['backdrops']):
-  
-      score = (backdrop['vote_average'] / max_average) * BACKDROP_SCORE_RATIO
-      score += (backdrop['vote_count'] / max_count) * (1 - BACKDROP_SCORE_RATIO)
-      tmdb_images_dict['backdrops'][i]['score'] = score
+      valid_names = list()
+      for i, backdrop in enumerate(tmdb_images_dict['backdrops']):
+    
+        score = (backdrop['vote_average'] / max_average) * BACKDROP_SCORE_RATIO
+        score += (backdrop['vote_count'] / max_count) * (1 - BACKDROP_SCORE_RATIO)
+        tmdb_images_dict['backdrops'][i]['score'] = score
 
-      # Boost the score for localized art (according to the preference).
-      if Prefs['localart']:
-        if backdrop['iso_639_1'] == lang:
-          tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) + 1
+        # Boost the score for localized art (according to the preference).
+        if Prefs['localart']:
+          if backdrop['iso_639_1'] == lang:
+            tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) + 1
 
-      # Discount score for foreign art.
-      if backdrop['iso_639_1'] != lang and backdrop['iso_639_1'] is not None and backdrop['iso_639_1'] != 'en':
-        tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) - 1
+        # Discount score for foreign art.
+        if backdrop['iso_639_1'] != lang and backdrop['iso_639_1'] is not None and backdrop['iso_639_1'] != 'en':
+          tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) - 1
 
-    for i, backdrop in enumerate(sorted(tmdb_images_dict['backdrops'], key=lambda k: k['score'], reverse=True)):
-      if i > ARTWORK_ITEM_LIMIT:
-        break
-      else:
-        backdrop_url = config_dict['images']['base_url'] + 'original' + backdrop['file_path']
-        thumb_url = config_dict['images']['base_url'] + 'w300' + backdrop['file_path']
-        valid_names.append(backdrop_url)
+      for i, backdrop in enumerate(sorted(tmdb_images_dict['backdrops'], key=lambda k: k['score'], reverse=True)):
+        if i > ARTWORK_ITEM_LIMIT:
+          break
+        else:
+          backdrop_url = config_dict['images']['base_url'] + 'original' + backdrop['file_path']
+          thumb_url = config_dict['images']['base_url'] + 'w300' + backdrop['file_path']
+          valid_names.append(backdrop_url)
 
-        if backdrop_url not in metadata.art:
-          try: metadata.art[backdrop_url] = proxy(HTTP.Request(thumb_url), sort_order=i+1)
-          except: pass
+          if backdrop_url not in metadata.art:
+            try: metadata.art[backdrop_url] = proxy(HTTP.Request(thumb_url), sort_order=i+1)
+            except: pass
 
-    metadata.art.validate_keys(valid_names)
+      metadata.art.validate_keys(valid_names)
 
   @staticmethod
   def get_json(url, cache_time=CACHE_1MONTH):
