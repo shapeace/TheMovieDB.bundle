@@ -2,8 +2,6 @@
 # Multi-language support added by Aqntbghd
 # 3.0 API update by ToMM
 
-import time
-
 # apiary.io debugging URL
 # BASE_URL = 'http://private-ad99a-themoviedb.apiary.io/3/'
 
