@@ -20,6 +20,7 @@ TMDB_TV = '%s/tv/%%s?api_key=%s&append_to_response=credits&language=%%s' % (BASE
 TMDB_TV_SEASON = '%s/tv/%%s/season/%%s?api_key=%s&language=%%s' % (BASE_URL, API_KEY)
 TMDB_TV_EPISODE = '%s/tv/%%s/season/%%s/episode/%%s?api_key=%s&append_to_response=credits&language=%%s' % (BASE_URL, API_KEY)
 TMDB_TV_IMAGES = '%s/tv/%%s/images?api_key=%s' % (BASE_URL, API_KEY)
+TMDB_TV_EXTERNAL_IDS = '%s/tv/%%s/external_ids?api_key=%s' % (BASE_URL, API_KEY)
 
 COUNTRY_LIST = 'https://gist.github.com/sander1/7182766/raw/country.json' # This file needs to be hosted somewhere where we can send the correct HTTP headers for JSON so the Agent will cache the file
 
@@ -105,6 +106,17 @@ def GetImdbId(tmdb_id, lang='en'):
 
   if isinstance(tmdb_dict, dict) and 'imdb_id' in tmdb_dict and RE_IMDB_ID.search(tmdb_dict['imdb_id']):
     return tmdb_dict['imdb_id']
+
+  return None
+
+####################################################################################################
+@expose
+def GetTvdbId(tmdb_id):
+
+  tmdb_dict = GetJSON(url=TMDB_TV_EXTERNAL_IDS % tmdb_id)
+
+  if isinstance(tmdb_dict, dict) and 'tvdb_id' in tmdb_dict and tmdb_dict['tvdb_id']:
+    return str(tmdb_dict['tvdb_id'])
 
   return None
 
