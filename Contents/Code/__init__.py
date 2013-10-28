@@ -79,6 +79,19 @@ TMDB_COUNTRY_CODE = {
   'Venezuela': 'VE'
 }
 
+# TMDB does not seem to have an official set of supported languages.  Users can register and 'translate'
+# any movie to any ISO 639-1 language.  The following is a realistic list from a popular title.
+# This agent falls back to English metadata and sorts out foreign artwork to to ensure the best
+# user experience when less common languages are chosen.
+LANGUAGES = [
+             Locale.Language.English, Locale.Language.Czech, Locale.Language.Danish, Locale.Language.German,
+             Locale.Language.Greek, Locale.Language.Spanish, Locale.Language.Finnish, Locale.Language.French,
+             Locale.Language.Hebrew, Locale.Language.Croatian, Locale.Language.Hungarian, Locale.Language.Italian,
+             Locale.Language.Latvian, Locale.Language.Dutch, Locale.Language.Norwegian, Locale.Language.Polish,
+             Locale.Language.Portuguese, Locale.Language.Russian, Locale.Language.Slovak, Locale.Language.Swedish,
+             Locale.Language.Thai, Locale.Language.Turkish, Locale.Language.Vietnamese, Locale.Language.Chinese
+            ]
+
 ####################################################################################################
 def Start():
 
@@ -111,20 +124,7 @@ def GetJSON(url, cache_time=CACHE_1MONTH):
 class TMDbAgent(Agent.Movies):
 
   name = 'The Movie Database'
-  
-  # TMDB does not seem to have an official set of supported languages.  Users can register and 'translate'
-  # any movie to any ISO 639-1 language.  The following is a realistic list from a popular title.
-  # This agent falls back to English metadata and sorts out foreign artwork to to ensure the best
-  # user experience when less common languages are chosen.
-
-  languages = [
-               Locale.Language.English, Locale.Language.Czech, Locale.Language.Danish, Locale.Language.German,
-               Locale.Language.Greek, Locale.Language.Spanish, Locale.Language.Finnish, Locale.Language.French,
-               Locale.Language.Hebrew, Locale.Language.Croatian, Locale.Language.Hungarian, Locale.Language.Italian,
-               Locale.Language.Latvian, Locale.Language.Dutch, Locale.Language.Norwegian, Locale.Language.Polish,
-               Locale.Language.Portuguese, Locale.Language.Russian, Locale.Language.Slovak, Locale.Language.Swedish,
-               Locale.Language.Thai, Locale.Language.Turkish, Locale.Language.Vietnamese, Locale.Language.Chinese
-              ]
+  languages = LANGUAGES
   primary_provider = True
   accepts_from = ['com.plexapp.agents.localmedia']
   contributes_to = ['com.plexapp.agents.imdb']
@@ -382,20 +382,7 @@ class TMDbAgent(Agent.Movies):
 class TMDbAgent(Agent.TV_Shows):
 
   name = 'The Movie Database'
-
-  # TMDB does not seem to have an official set of supported languages.  Users can register and 'translate'
-  # any movie to any ISO 639-1 language.  The following is a realistic list from a popular title.
-  # This agent falls back to English metadata and sorts out foreign artwork to to ensure the best
-  # user experience when less common languages are chosen.
-
-  languages = [
-               Locale.Language.English, Locale.Language.Czech, Locale.Language.Danish, Locale.Language.German,
-               Locale.Language.Greek, Locale.Language.Spanish, Locale.Language.Finnish, Locale.Language.French,
-               Locale.Language.Hebrew, Locale.Language.Croatian, Locale.Language.Hungarian, Locale.Language.Italian,
-               Locale.Language.Latvian, Locale.Language.Dutch, Locale.Language.Norwegian, Locale.Language.Polish,
-               Locale.Language.Portuguese, Locale.Language.Russian, Locale.Language.Slovak, Locale.Language.Swedish,
-               Locale.Language.Thai, Locale.Language.Turkish, Locale.Language.Vietnamese, Locale.Language.Chinese
-              ]
+  languages = LANGUAGES
   primary_provider = True
   accepts_from = ['com.plexapp.agents.localmedia']
 
@@ -410,12 +397,18 @@ class TMDbAgent(Agent.TV_Shows):
     if Prefs['adult']:
       include_adult = 'true'
 
-    tmdb_dict = GetJSON(url=TMDB_TV_SEARCH % (String.Quote(String.StripDiacritics(media.show)), year, lang, include_adult))
+    media_show = media.show
+    if not manual:
+      filename = String.Unquote(media.filename)
+      if (' (US)' in filename or ' (UK)' in filename) and (media.show.endswith(' Us') or media.show.endswith(' Uk')):
+        media_show = media.show.rsplit(' ', 1)[0]
+
+    tmdb_dict = GetJSON(url=TMDB_TV_SEARCH % (String.Quote(String.StripDiacritics(media_show)), year, lang, include_adult))
 
     if tmdb_dict and 'results' in tmdb_dict:
       for i, show in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
         score = 90
-        score = score - abs(String.LevenshteinDistance(show['name'].lower(), media.show.lower()))
+        score = score - abs(String.LevenshteinDistance(show['name'].lower(), media_show.lower()))
 
         # Adjust score slightly for 'popularity' (helpful for similar or identical titles when no media.year is present)
         score = score - (5 * i)
