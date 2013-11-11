@@ -396,7 +396,7 @@ class TMDbAgent(Agent.TV_Shows):
   name = 'The Movie Database'
   languages = LANGUAGES
   primary_provider = True
-  accepts_from = ['com.plexapp.agents.localmedia']
+  accepts_from = ['com.plexapp.agents.localmedia', 'com.plexapp.agents.thetvdb']
 
   def search(self, results, media, lang, manual):
 
