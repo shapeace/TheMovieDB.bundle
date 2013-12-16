@@ -260,7 +260,7 @@ class TMDbAgent(Agent.Movies):
     metadata.writers.clear()
     metadata.producers.clear()
     metadata.roles.clear()
-    config_dict = self.get_json(url=TMDB_CONFIG_URL, cache_time=CACHE_1MONTH * 3)
+    config_dict = self.get_json(url=TMDB_CONFIG_URL, cache_time=CACHE_1WEEK * 2)
 
     for member in tmdb_dict['casts']['crew']:
       if member['job'] == 'Director':
