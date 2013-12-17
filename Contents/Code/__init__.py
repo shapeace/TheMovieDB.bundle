@@ -7,7 +7,20 @@ import time
 # apiary.io debugging URL
 # BASE_URL = 'http://private-ad99a-themoviedb.apiary.io/3/'
 
-BASE_URL = 'https://api.themoviedb.org/3/'
+# BASE_URL = 'https://api.themoviedb.org/3/'
+
+# Phased rollout of traffic to new TMDB API URL
+try:
+  import random
+  NEW_BASEURL_PCT = 10
+  if (random.random() * 100 < NEW_BASEURL_PCT):
+    BASE_URL = 'https://api.tmdb.org/3/'
+  else:
+    raise
+except:
+  BASE_URL = 'https://api.themoviedb.org/3/'
+Log('Using base URL: ' + BASE_URL)
+# End phased rollout stuff
 
 TMDB_CONFIG_URL = BASE_URL + 'configuration?api_key=a3dc111e66105f6387e99393813ae4d5'
 TMDB_MOVIE_URL = BASE_URL + 'movie/%s?api_key=a3dc111e66105f6387e99393813ae4d5&append_to_response=releases,casts&language=%s'
