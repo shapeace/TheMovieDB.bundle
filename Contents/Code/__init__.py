@@ -12,7 +12,7 @@ import time
 # Phased rollout of traffic to new TMDB API URL
 try:
   import random
-  NEW_BASEURL_PCT = 10
+  NEW_BASEURL_PCT = 50
   if (random.random() * 100 < NEW_BASEURL_PCT):
     BASE_URL = 'https://api.tmdb.org/3/'
   else:
