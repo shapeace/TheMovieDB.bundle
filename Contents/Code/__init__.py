@@ -9,7 +9,7 @@ import time
 
 BASE_URL = 'https://api.tmdb.org/3/'
 TMDB_CONFIG_URL = BASE_URL + 'configuration?api_key=a3dc111e66105f6387e99393813ae4d5'
-TMDB_MOVIE_URL = BASE_URL + 'movie/%s?api_key=a3dc111e66105f6387e99393813ae4d5&append_to_response=releases,casts&language=%s'
+TMDB_MOVIE_URL = BASE_URL + 'movie/%s?api_key=a3dc111e66105f6387e99393813ae4d5&append_to_response=releases,credits&language=%s'
 TMDB_IMAGES_URL = BASE_URL + 'movie/%s/images?api_key=a3dc111e66105f6387e99393813ae4d5'
 TMDB_SEARCH_URL = BASE_URL + 'search/movie?api_key=a3dc111e66105f6387e99393813ae4d5&query=%s&year=%s&language=%s&include_adult=%s'
 
@@ -261,7 +261,7 @@ class TMDbAgent(Agent.Movies):
     metadata.roles.clear()
     config_dict = self.get_json(url=TMDB_CONFIG_URL, cache_time=CACHE_1WEEK * 2)
 
-    for member in tmdb_dict['casts']['crew']:
+    for member in tmdb_dict['credits']['crew']:
       if member['job'] == 'Director':
         metadata.directors.add(member['name'])
       elif member['job'] in ('Writer', 'Screenplay'):
@@ -269,7 +269,7 @@ class TMDbAgent(Agent.Movies):
       elif member['job'] == 'Producer':
         metadata.producers.add(member['name'])
 
-    for member in tmdb_dict['casts']['cast']:
+    for member in sorted(tmdb_dict['credits']['cast'], key=lambda k: k['order']):
       role = metadata.roles.new()
       role.role = member['character']
       role.actor = member['name']
