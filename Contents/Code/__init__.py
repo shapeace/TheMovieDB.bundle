@@ -174,7 +174,7 @@ class TMDbAgent(Agent.Movies):
   def update(self, metadata, media, lang):
     proxy = Proxy.Preview
     tmdb_dict = self.get_json(url=TMDB_MOVIE_URL % (metadata.id, lang))
-    if tmdb_dict['overview'] is None:
+    if tmdb_dict and not 'overview' in tmdb_dict:
       # Retry the query with no language specified if we didn't get anything from the initial request.
       tmdb_dict = self.get_json(url=TMDB_MOVIE_URL % (metadata.id, ''))
     # This additional request is necessary since full art/poster lists are not returned if they don't exactly match the language
