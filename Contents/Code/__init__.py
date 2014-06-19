@@ -327,6 +327,10 @@ class TMDbAgent(Agent.Movies):
         score += (backdrop['vote_count'] / max_count) * (1 - BACKDROP_SCORE_RATIO)
         tmdb_images_dict['backdrops'][i]['score'] = score
 
+        # For backdrops, we prefer "No Language" since they're intended to sit behind text.
+        if backdrop['iso_639_1'] == 'xx' or backdrop['iso_639_1'] == 'none':
+          tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) + 2
+
         # Boost the score for localized art (according to the preference).
         if Prefs['localart']:
           if backdrop['iso_639_1'] == lang:
