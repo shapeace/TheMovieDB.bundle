@@ -44,6 +44,7 @@ TMDB_COUNTRY_CODE = {
   'Ireland': 'IE',
   'Italy': 'IT',
   'Jamaica': 'JM',
+  'Korea': 'KO',
   'Liechtenstein': 'LI',
   'Luxembourg': 'LU',
   'Mexico': 'MX',
@@ -98,7 +99,8 @@ class TMDbAgent(Agent.Movies):
                Locale.Language.Hebrew, Locale.Language.Croatian, Locale.Language.Hungarian, Locale.Language.Italian,
                Locale.Language.Latvian, Locale.Language.Dutch, Locale.Language.Norwegian, Locale.Language.Polish,
                Locale.Language.Portuguese, Locale.Language.Russian, Locale.Language.Slovak, Locale.Language.Swedish,
-               Locale.Language.Thai, Locale.Language.Turkish, Locale.Language.Vietnamese, Locale.Language.Chinese
+               Locale.Language.Thai, Locale.Language.Turkish, Locale.Language.Vietnamese, Locale.Language.Chinese,
+               Locale.Language.Korean
               ]
   primary_provider = True
   accepts_from = ['com.plexapp.agents.localmedia']
