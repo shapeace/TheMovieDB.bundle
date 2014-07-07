@@ -245,11 +245,10 @@ class TMDbAgent(Agent.Movies):
         country = country['name'].replace('United States of America', 'USA')
         metadata.countries.add(country)
 
-    # Cast.
+    # Crew.
     metadata.directors.clear()
     metadata.writers.clear()
     metadata.producers.clear()
-    metadata.roles.clear()
 
     for member in tmdb_dict['credits']['crew']:
       if member['job'] == 'Director':
@@ -258,6 +257,9 @@ class TMDbAgent(Agent.Movies):
         metadata.writers.add(member['name'])
       elif member['job'] == 'Producer':
         metadata.producers.add(member['name'])
+
+    # Cast.
+    metadata.roles.clear()
 
     for member in sorted(tmdb_dict['credits']['cast'], key=lambda k: k['order']):
       role = metadata.roles.new()
@@ -466,16 +468,13 @@ class TMDbAgent(Agent.TV_Shows):
 
     # Cast.
     metadata.roles.clear()
-    for actor in tmdb_dict['credits']['cast']:
-      try:
-        role = metadata.roles.new()
-        role.role = actor['character_name']
-        role.actor = actor['name']
 
-        if actor['profile_path'] is not None:
-          role.photo = config_dict['images']['base_url'] + 'original' + actor['profile_path']
-      except:
-        pass
+    for member in sorted(tmdb_dict['credits']['cast'], key=lambda k: k['order']):
+      role = metadata.roles.new()
+      role.role = member['character_name']
+      role.actor = member['name']
+      if member['profile_path'] is not None:
+        role.photo = config_dict['images']['base_url'] + 'original' + member['profile_path']
 
     # Note: for TMDB artwork, number of votes is a good predictor of poster quality. Ratings are assigned
     # using a Baysean average that appears to be poorly calibrated, so ratings are almost always between
