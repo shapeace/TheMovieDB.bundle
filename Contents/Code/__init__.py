@@ -22,7 +22,7 @@ TMDB_TV_EPISODE = '%s/tv/%%s/season/%%s/episode/%%s?api_key=%s&append_to_respons
 TMDB_TV_IMAGES = '%s/tv/%%s/images?api_key=%s' % (BASE_URL, API_KEY)
 TMDB_TV_EXTERNAL_IDS = '%s/tv/%%s/external_ids?api_key=%s' % (BASE_URL, API_KEY)
 
-COUNTRY_LIST = 'https://gist.github.com/sander1/7182766/raw/country.json' # This file needs to be hosted somewhere where we can send the correct HTTP headers for JSON so the Agent will cache the file
+COUNTRY_LIST = 'http://6bcff61fb860029015c6-b0c40228a7b02641ddb14594625d1e51.r77.cf3.rackcdn.com/country.json'
 
 ARTWORK_ITEM_LIMIT = 15
 REQUEST_RETRY_LIMIT = 3
