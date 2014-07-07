@@ -25,7 +25,6 @@ TMDB_TV_EXTERNAL_IDS = '%s/tv/%%s/external_ids?api_key=%s' % (BASE_URL, API_KEY)
 COUNTRY_LIST = 'http://6bcff61fb860029015c6-b0c40228a7b02641ddb14594625d1e51.r77.cf3.rackcdn.com/country.json'
 
 ARTWORK_ITEM_LIMIT = 15
-REQUEST_RETRY_LIMIT = 3
 POSTER_SCORE_RATIO = .3 # How much weight to give ratings vs. vote counts when picking best posters. 0 means use only ratings.
 BACKDROP_SCORE_RATIO = .3
 RE_IMDB_ID = Regex('^tt\d{7}$')
