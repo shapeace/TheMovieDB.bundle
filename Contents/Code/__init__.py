@@ -2,6 +2,8 @@
 # Multi-language support added by Aqntbghd
 # 3.0 API update by ToMM
 
+import countrycode
+
 # apiary.io debugging URL
 # BASE_URL = 'http://private-ad99a-themoviedb.apiary.io/3'
 
@@ -22,64 +24,10 @@ TMDB_TV_EPISODE = '%s/tv/%%s/season/%%s/episode/%%s?api_key=%s&append_to_respons
 TMDB_TV_IMAGES = '%s/tv/%%s/images?api_key=%s' % (BASE_URL, API_KEY)
 TMDB_TV_EXTERNAL_IDS = '%s/tv/%%s/external_ids?api_key=%s' % (BASE_URL, API_KEY)
 
-COUNTRY_LIST = 'http://6bcff61fb860029015c6-b0c40228a7b02641ddb14594625d1e51.r77.cf3.rackcdn.com/country.json'
-
 ARTWORK_ITEM_LIMIT = 15
 POSTER_SCORE_RATIO = .3 # How much weight to give ratings vs. vote counts when picking best posters. 0 means use only ratings.
 BACKDROP_SCORE_RATIO = .3
 RE_IMDB_ID = Regex('^tt\d{7}$')
-
-TMDB_COUNTRY_CODE = {
-  'Argentina': 'AR',
-  'Australia': 'AU',
-  'Austria': 'AT',
-  'Belgium': 'BE',
-  'Belize': 'BZ',
-  'Bolivia': 'BO',
-  'Brazil': 'BR',
-  'Canada': 'CA',
-  'Chile': 'CL',
-  'Colombia': 'CO',
-  'Costa Rica': 'CR',
-  'Czech Republic': 'CZ',
-  'Denmark': 'DK',
-  'Dominican Republic': 'DO',
-  'Ecuador': 'EC',
-  'El Salvador': 'SV',
-  'France': 'FR',
-  'Germany': 'DE',
-  'Guatemala': 'GT',
-  'Honduras': 'HN',
-  'Hong Kong SAR': 'HK',
-  'Ireland': 'IE',
-  'Italy': 'IT',
-  'Jamaica': 'JM',
-  'Korea': 'KO',
-  'Liechtenstein': 'LI',
-  'Luxembourg': 'LU',
-  'Mexico': 'MX',
-  'Netherlands': 'NL',
-  'New Zealand': 'NZ',
-  'Nicaragua': 'NI',
-  'Panama': 'PA',
-  'Paraguay': 'PY',
-  'Peru': 'PE',
-  'Portugal': 'PT',
-  'Peoples Republic of China': 'CN',
-  'Puerto Rico': 'PR',
-  'Russia': 'RU',
-  'Singapore': 'SG',
-  'South Africa': 'ZA',
-  'Spain': 'ES',
-  'Sweden': 'SV',
-  'Switzerland': 'CH',
-  'Taiwan': 'TW',
-  'Trinidad': 'TT',
-  'United Kingdom': 'GB',
-  'United States': 'US',
-  'Uruguay': 'UY',
-  'Venezuela': 'VE'
-}
 
 # TMDB does not seem to have an official set of supported languages.  Users can register and 'translate'
 # any movie to any ISO 639-1 language.  The following is a realistic list from a popular title.
@@ -252,14 +200,14 @@ class TMDbAgent(Agent.Movies):
       c = Prefs['country']
 
       for country in tmdb_dict['releases']['countries']:
-        if country['iso_3166_1'] == TMDB_COUNTRY_CODE[c]:
+        if country['iso_3166_1'] == countrycode.COUNTRY_TO_CODE[c]:
 
           # Content rating.
           if 'certification' in country and country['certification'] != '':
-            if TMDB_COUNTRY_CODE[c] == 'US':
+            if countrycode.COUNTRY_TO_CODE[c] == 'US':
               metadata.content_rating = country['certification']
             else:
-              metadata.content_rating = '%s/%s' % (TMDB_COUNTRY_CODE[c].lower(), country['certification'])
+              metadata.content_rating = '%s/%s' % (countrycode.COUNTRY_TO_CODE[c].lower(), country['certification'])
 
           # Release date (country specific).
           if 'release_date' in country and country['release_date'] != '':
@@ -507,11 +455,9 @@ class TMDbAgent(Agent.TV_Shows):
     # Country.
     metadata.countries.clear()
     if 'origin_country' in tmdb_dict:
-      countries = GetJSON(url=COUNTRY_LIST, cache_time=CACHE_1MONTH * 3)
-
       for country in tmdb_dict['origin_country']:
-        if len(country) == 2 and country in countries:
-          country = countries[country]
+        if len(country) == 2 and country in countrycode.CODE_TO_COUNTRY:
+          country = countrycode.CODE_TO_COUNTRY[country]
         else:
           continue
 
