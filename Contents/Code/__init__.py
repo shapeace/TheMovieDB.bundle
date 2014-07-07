@@ -471,7 +471,7 @@ class TMDbAgent(Agent.TV_Shows):
 
     for member in sorted(tmdb_dict['credits']['cast'], key=lambda k: k['order']):
       role = metadata.roles.new()
-      role.role = member['character_name']
+      role.role = member['character']
       role.actor = member['name']
       if member['profile_path'] is not None:
         role.photo = config_dict['images']['base_url'] + 'original' + member['profile_path']
