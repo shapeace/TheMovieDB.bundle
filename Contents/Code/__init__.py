@@ -599,7 +599,7 @@ class TMDbAgent(Agent.TV_Shows):
 
             tmdb_episode_dict = GetJSON(url=TMDB_TV_EPISODE % (metadata.id, s, e, lang))
 
-            if tmdb_episode_dict is None:
+            if not isinstance(tmdb_episode_dict, dict):
               return None
 
             # Rating.
