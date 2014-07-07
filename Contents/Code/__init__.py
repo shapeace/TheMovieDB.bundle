@@ -105,7 +105,7 @@ class TMDbAgent(Agent.Movies):
       if manual and RE_IMDB_ID.search(media.name):
         tmdb_dict = GetJSON(url=TMDB_MOVIE % (media.name, lang))
 
-        if tmdb_dict and 'id' in tmdb_dict:
+        if isinstance(tmdb_dict, dict) and 'id' in tmdb_dict:
           results.Append(MetadataSearchResult(
             id = str(tmdb_dict['id']),
             name = tmdb_dict['title'],
@@ -127,7 +127,7 @@ class TMDbAgent(Agent.Movies):
 
         tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(String.StripDiacritics(media.name)), year, lang, include_adult))
 
-        if tmdb_dict and 'results' in tmdb_dict:
+        if isinstance(tmdb_dict, dict) and 'results' in tmdb_dict:
           for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
             score = 90
             score = score - abs(String.LevenshteinDistance(movie['title'].lower(), media.name.lower()))
@@ -164,14 +164,14 @@ class TMDbAgent(Agent.Movies):
     config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
     tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata.id, lang))
 
-    if tmdb_dict is None or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None:
+    if not isinstance(tmdb_dict, dict) or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None:
       # Retry the query with no language specified if we didn't get anything from the initial request.
       tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata.id, ''))
 
     # This additional request is necessary since full art/poster lists are not returned if they don't exactly match the language
     tmdb_images_dict = GetJSON(url=TMDB_MOVIE_IMAGES % metadata.id)
 
-    if tmdb_dict is None or tmdb_images_dict is None:
+    if not isinstance(tmdb_dict, dict) or not isinstance(tmdb_images_dict, dict):
       return None
 
     # Rating.
@@ -373,7 +373,7 @@ class TMDbAgent(Agent.TV_Shows):
 
     tmdb_dict = GetJSON(url=TMDB_TV_SEARCH % (String.Quote(String.StripDiacritics(media_show)), year, lang, include_adult))
 
-    if tmdb_dict and 'results' in tmdb_dict:
+    if isinstance(tmdb_dict, dict) and 'results' in tmdb_dict:
       for i, show in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
         score = 90
         score = score - abs(String.LevenshteinDistance(show['name'].lower(), media_show.lower()))
@@ -410,14 +410,14 @@ class TMDbAgent(Agent.TV_Shows):
     config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
     tmdb_dict = GetJSON(url=TMDB_TV % (metadata.id, lang))
 
-    if tmdb_dict is None or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None:
+    if not isinstance(tmdb_dict, dict) or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None:
       # Retry the query with no language specified if we didn't get anything from the initial request.
       tmdb_dict = GetJSON(url=TMDB_TV % (metadata.id, ''))
 
     # This additional request is necessary since full art/poster lists are not returned if they don't exactly match the language
     tmdb_images_dict = GetJSON(url=TMDB_TV_IMAGES % metadata.id)
 
-    if tmdb_dict is None or tmdb_images_dict is None:
+    if not isinstance(tmdb_dict, dict) or not isinstance(tmdb_images_dict, dict):
       return None
 
     # Rating.
