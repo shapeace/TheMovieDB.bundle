@@ -5,7 +5,7 @@
 # apiary.io debugging URL
 # BASE_URL = 'http://private-ad99a-themoviedb.apiary.io/3'
 
-BASE_URL = 'https://api.themoviedb.org/3'
+BASE_URL = 'https://api.tmdb.org/3'
 API_KEY = 'a3dc111e66105f6387e99393813ae4d5'
 TMDB_CONFIG = '%s/configuration?api_key=%s' % (BASE_URL, API_KEY)
 
