@@ -214,7 +214,7 @@ class TMDbAgent(Agent.Movies):
 
   def update(self, metadata, media, lang):
 
-    config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1MONTH * 3)
+    config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
     tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata.id, lang))
 
     if tmdb_dict['overview'] is None:
@@ -458,7 +458,7 @@ class TMDbAgent(Agent.TV_Shows):
 
   def update(self, metadata, media, lang):
 
-    config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1MONTH * 3)
+    config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
     tmdb_dict = GetJSON(url=TMDB_TV % (metadata.id, lang))
 
     if tmdb_dict['overview'] is None:
