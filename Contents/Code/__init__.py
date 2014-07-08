@@ -273,11 +273,12 @@ class TMDbAgent(Agent.Movies):
     # 5 and 6 or zero.  Consider both of these, weighting them according to the POSTER_SCORE_RATIO.
 
     # No votes get zero, use TMDB's apparent initial Baysean prior mean of 5 instead.
+    valid_names = list()
+
     if tmdb_images_dict['posters']:
       max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['posters']])
       max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['posters']]) or 1
 
-      valid_names = list()
       for i, poster in enumerate(tmdb_images_dict['posters']):
 
         score = (poster['vote_average'] / max_average) * POSTER_SCORE_RATIO
@@ -305,14 +306,15 @@ class TMDbAgent(Agent.Movies):
             try: metadata.posters[poster_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
             except: pass
 
-      metadata.posters.validate_keys(valid_names)
+    metadata.posters.validate_keys(valid_names)
 
     # Backdrops.
+    valid_names = list()
+
     if tmdb_images_dict['backdrops']:
       max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['backdrops']])
       max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['backdrops']]) or 1
 
-      valid_names = list()
       for i, backdrop in enumerate(tmdb_images_dict['backdrops']):
 
         score = (backdrop['vote_average'] / max_average) * BACKDROP_SCORE_RATIO
@@ -344,7 +346,7 @@ class TMDbAgent(Agent.Movies):
             try: metadata.art[backdrop_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
             except: pass
 
-      metadata.art.validate_keys(valid_names)
+    metadata.art.validate_keys(valid_names)
 
 ####################################################################################################
 class TMDbAgent(Agent.TV_Shows):
@@ -481,11 +483,12 @@ class TMDbAgent(Agent.TV_Shows):
     # 5 and 6 or zero.  Consider both of these, weighting them according to the POSTER_SCORE_RATIO.
 
     # No votes get zero, use TMDB's apparent initial Baysean prior mean of 5 instead.
+    valid_names = list()
+
     if tmdb_images_dict['posters']:
       max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['posters']])
       max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['posters']]) or 1
 
-      valid_names = list()
       for i, poster in enumerate(tmdb_images_dict['posters']):
 
         score = (poster['vote_average'] / max_average) * POSTER_SCORE_RATIO
@@ -513,14 +516,15 @@ class TMDbAgent(Agent.TV_Shows):
             try: metadata.posters[poster_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
             except: pass
 
-      metadata.posters.validate_keys(valid_names)
+    metadata.posters.validate_keys(valid_names)
 
     # Backdrops.
+    valid_names = list()
+
     if tmdb_images_dict['backdrops']:
       max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['backdrops']])
       max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['backdrops']]) or 1
 
-      valid_names = list()
       for i, backdrop in enumerate(tmdb_images_dict['backdrops']):
 
         score = (backdrop['vote_average'] / max_average) * BACKDROP_SCORE_RATIO
@@ -552,7 +556,7 @@ class TMDbAgent(Agent.TV_Shows):
             try: metadata.art[backdrop_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
             except: pass
 
-      metadata.art.validate_keys(valid_names)
+    metadata.art.validate_keys(valid_names)
 
     # Get episode data.
     @parallelize
