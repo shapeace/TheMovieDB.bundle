@@ -388,16 +388,17 @@ class TMDbAgent(Agent.TV_Shows):
 
     if isinstance(tmdb_dict, dict) and 'results' in tmdb_dict:
       for i, show in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
+        # Skip everything that does not have a first air date, these are almost always empty or incomplete entries
+        if not show['first_air_date']:
+          continue
+
         score = 90
         score = score - abs(String.LevenshteinDistance(show['name'].lower(), media_show.lower()))
 
         # Adjust score slightly for 'popularity' (helpful for similar or identical titles when no media.year is present)
-        score = score - (5 * i)
+        #score = score - (5 * i)
 
-        if 'first_air_date' in show and show['first_air_date']:
-          release_year = int(show['first_air_date'].split('-')[0])
-        else:
-          release_year = None
+        release_year = int(show['first_air_date'].split('-')[0])
 
         if media.year and int(media.year) > 1900 and release_year:
           year_diff = abs(int(media.year) - release_year)
