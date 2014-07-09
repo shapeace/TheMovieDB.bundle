@@ -403,7 +403,7 @@ class TMDbAgent(Agent.TV_Shows):
         if media.year and int(media.year) > 1900 and release_year:
           year_diff = abs(int(media.year) - release_year)
 
-          if year_diff <= 1:
+          if year_diff == 0:
             score = score + 10
           else:
             score = score - (5 * year_diff)
