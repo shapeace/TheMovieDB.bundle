@@ -71,6 +71,17 @@ def GetTvdbId(tmdb_id):
   return None
 
 ####################################################################################################
+@expose
+def GetTvRageId(tmdb_id):
+
+  tmdb_dict = GetJSON(url=TMDB_TV_EXTERNAL_IDS % tmdb_id)
+
+  if isinstance(tmdb_dict, dict) and 'tvrage_id' in tmdb_dict and tmdb_dict['tvrage_id']:
+    return str(tmdb_dict['tvrage_id'])
+
+  return None
+
+####################################################################################################
 def GetJSON(url, cache_time=CACHE_1MONTH):
 
   tmdb_dict = None
