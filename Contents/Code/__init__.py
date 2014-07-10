@@ -23,6 +23,7 @@ TMDB_TV_SEASON = '%s/tv/%%s/season/%%s?api_key=%s&language=%%s' % (BASE_URL, API
 TMDB_TV_EPISODE = '%s/tv/%%s/season/%%s/episode/%%s?api_key=%s&append_to_response=credits&language=%%s' % (BASE_URL, API_KEY)
 TMDB_TV_IMAGES = '%s/tv/%%s/images?api_key=%s' % (BASE_URL, API_KEY)
 TMDB_TV_EXTERNAL_IDS = '%s/tv/%%s/external_ids?api_key=%s' % (BASE_URL, API_KEY)
+TMDB_TV_TVDB = '%s/tv/find/%%s?api_key=%s&external_source=tvdb_id' % (BASE_URL, API_KEY)
 
 ARTWORK_ITEM_LIMIT = 15
 POSTER_SCORE_RATIO = .3 # How much weight to give ratings vs. vote counts when picking best posters. 0 means use only ratings.
@@ -366,8 +367,23 @@ class TMDbAgent(Agent.TV_Shows):
   languages = LANGUAGES
   primary_provider = True
   accepts_from = ['com.plexapp.agents.localmedia', 'com.plexapp.agents.thetvdb']
+  contributes_to = ['com.plexapp.agents.thetvdb']
 
   def search(self, results, media, lang, manual):
+
+    # If TMDB is used as a secondary agent for TVDB, find the TMDB id
+    if media.primary_agent == 'com.plexapp.agents.thetvdb':
+      tmdb_dict = GetJSON(url=TMDB_TV_TVDB % (media.primary_metadata.id))
+
+      if isinstance(tmdb_dict, dict) and 'tv_results' in tmdb_dict and len(tmdb_dict['tv_results']) > 0:
+        tmdb_id = tmdb_dict['tv_results'][0]['id']
+
+        results.Append(MetadataSearchResult(
+          id = str(tmdb_id),
+          score = 100
+        ))
+
+      return
 
     if media.year and int(media.year) > 1900:
       year = media.year
