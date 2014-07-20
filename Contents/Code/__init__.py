@@ -409,7 +409,17 @@ class TMDbAgent(Agent.TV_Shows):
       if (' (US)' in filename or ' (UK)' in filename) and (media.show.endswith(' Us') or media.show.endswith(' Uk')):
         media_show = media.show.rsplit(' ', 1)[0]
 
-    tmdb_dict = GetJSON(url=TMDB_TV_SEARCH % (String.Quote(String.StripDiacritics(media_show)), year, lang, include_adult))
+    # StrippedDiacritics() is a pretty aggressive function that won't pass
+    # anything that can't be encoded to ASCII, and as such has a tendency to nuke whole titles in, e.g., Asian
+    # languages (See GHI #26).  If we have a string that was modified by StripDiacritics() and we get no results,
+    # try the search again with the original.
+    #
+    stripped_name = String.StripDiacritics(media_show)
+    tmdb_dict = GetJSON(url=TMDB_TV_SEARCH % (String.Quote(stripped_name), year, lang, include_adult))
+
+    if media_show != stripped_name and tmdb_dict == None:
+      Log('No results for title modified by strip diacritics, searching again with the original: ' + media_show)
+      tmdb_dict = GetJSON(url=TMDB_TV_SEARCH % (String.Quote(media_show), year, lang, include_adult))
 
     if isinstance(tmdb_dict, dict) and 'results' in tmdb_dict:
       for i, show in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
