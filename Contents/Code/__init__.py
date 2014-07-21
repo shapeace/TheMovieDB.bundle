@@ -185,7 +185,7 @@ class TMDbAgent(Agent.Movies):
     config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
     tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata.id, lang))
 
-    if not isinstance(tmdb_dict, dict) or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None:
+    if not isinstance(tmdb_dict, dict) or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None or tmdb_dict['overview'] == "":
       # Retry the query with no language specified if we didn't get anything from the initial request.
       tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata.id, ''))
 
@@ -460,7 +460,7 @@ class TMDbAgent(Agent.TV_Shows):
     config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
     tmdb_dict = GetJSON(url=TMDB_TV % (metadata.id, lang))
 
-    if not isinstance(tmdb_dict, dict) or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None:
+    if not isinstance(tmdb_dict, dict) or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None or tmdb_dict['overview'] == "":
       # Retry the query with no language specified if we didn't get anything from the initial request.
       tmdb_dict = GetJSON(url=TMDB_TV % (metadata.id, ''))
 
