@@ -233,6 +233,7 @@ class TMDbAgent(Agent.Movies):
           # Release date (country specific).
           if 'release_date' in country and country['release_date'] != '':
             metadata.originally_available_at = Datetime.ParseDate(country['release_date']).date()
+            metadata.year = metadata.originally_available_at.year
 
           break
 
