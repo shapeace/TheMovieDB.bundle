@@ -144,7 +144,7 @@ class TMDbAgent(Agent.Movies):
         #
         stripped_name = String.StripDiacritics(media.name)
         tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(stripped_name), year, lang, include_adult))
-        if media.name != stripped_name and tmdb_dict == None:
+        if media.name != stripped_name and (tmdb_dict == None or len(tmdb_dict['results']) == 0):
           Log('No results for title modified by strip diacritics, searching again with the original: ' + media.name)
           tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(media.name), year, lang, include_adult))
 
@@ -418,7 +418,7 @@ class TMDbAgent(Agent.TV_Shows):
     stripped_name = String.StripDiacritics(media_show)
     tmdb_dict = GetJSON(url=TMDB_TV_SEARCH % (String.Quote(stripped_name), year, lang, include_adult))
 
-    if media_show != stripped_name and tmdb_dict == None:
+    if media_show != stripped_name and (tmdb_dict == None or len(tmdb_dict['results']) == 0):
       Log('No results for title modified by strip diacritics, searching again with the original: ' + media_show)
       tmdb_dict = GetJSON(url=TMDB_TV_SEARCH % (String.Quote(media_show), year, lang, include_adult))
 
