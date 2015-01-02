@@ -257,8 +257,18 @@ class TMDbAgent(Agent.Movies):
       metadata.collections.add(tmdb_dict['belongs_to_collection']['name'].replace(' Collection',''))
 
     # Studio.
-    try: metadata.studio = tmdb_dict['production_companies'][0]['name'].strip()
-    except: pass
+    if 'production_companies' in tmdb_dict and len(tmdb_dict['production_companies']) > 0:
+      index = tmdb_dict['production_companies'][0]['id']
+
+      for studio in tmdb_dict['production_companies']:
+        if studio['id'] < index:
+          index = studio['id']
+          company = studio['name'].strip()
+
+      metadata.studio = company
+
+    else:
+      metadata.studio = None
 
     # Country.
     metadata.countries.clear()
@@ -502,8 +512,18 @@ class TMDbAgent(Agent.TV_Shows):
       metadata.genres.add(genre['name'].strip())
 
     # Studio.
-    try: metadata.studio = tmdb_dict['networks'][0]['name'].strip()
-    except: pass
+    if 'production_companies' in tmdb_dict and len(tmdb_dict['production_companies']) > 0:
+      index = tmdb_dict['production_companies'][0]['id']
+
+      for studio in tmdb_dict['production_companies']:
+        if studio['id'] < index:
+          index = studio['id']
+          company = studio['name'].strip()
+
+      metadata.studio = company
+
+    else:
+      metadata.studio = None
 
     # Country.
     metadata.countries.clear()
