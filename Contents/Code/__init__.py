@@ -261,7 +261,7 @@ class TMDbAgent(Agent.Movies):
       index = tmdb_dict['production_companies'][0]['id']
 
       for studio in tmdb_dict['production_companies']:
-        if studio['id'] < index:
+        if studio['id'] <= index:
           index = studio['id']
           company = studio['name'].strip()
 
@@ -516,7 +516,7 @@ class TMDbAgent(Agent.TV_Shows):
       index = tmdb_dict['production_companies'][0]['id']
 
       for studio in tmdb_dict['production_companies']:
-        if studio['id'] < index:
+        if studio['id'] <= index:
           index = studio['id']
           company = studio['name'].strip()
 
