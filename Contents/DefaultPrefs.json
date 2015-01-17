@@ -7,7 +7,7 @@
     },
     {
         "id": "localart",
-        "label": "Prefer artwork based on section language",
+        "label": "Prefer artwork based on library language",
         "type": "bool",
         "default": "true"
     },
