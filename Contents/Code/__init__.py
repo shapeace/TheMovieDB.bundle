@@ -7,7 +7,7 @@ import countrycode
 # apiary.io debugging URL
 # BASE_URL = 'http://private-ad99a-themoviedb.apiary.io/3'
 
-BASE_URL = 'https://api.tmdb.org/3'
+BASE_URL = 'https://api.tmdb.org/3' # TODO Possibly put this behind cloudflare?
 API_KEY = 'a3dc111e66105f6387e99393813ae4d5'
 TMDB_CONFIG = '%s/configuration?api_key=%s' % (BASE_URL, API_KEY)
 
@@ -83,6 +83,24 @@ def GetTvRageId(tmdb_id):
   return None
 
 ####################################################################################################
+@expose
+def GetTMDbSearchResults(id, name, year, lang, manual):
+
+  # TODO sanity checks on input vars
+
+  media = FakeMediaObj(id, name, year)
+  results = []
+  PerformTMDbMovieSearch(results, media, lang, manual)
+
+  return results if len(results) > 0 else None
+
+####################################################################################################
+@expose
+def GetTMDbMetadata(id, lang):
+
+  return PerformTMDbMovieUpdate(id, lang)
+
+####################################################################################################
 def GetJSON(url, cache_time=CACHE_1MONTH):
 
   tmdb_dict = None
@@ -95,6 +113,328 @@ def GetJSON(url, cache_time=CACHE_1MONTH):
   return tmdb_dict
 
 ####################################################################################################
+def AppendSearchResult(results, id, name=None, year=None, score=0, lang=None):
+
+  new_result = dict(id=str(id), name=name, year=int(year), score=score, lang=lang)
+
+  if isinstance(results, list):
+
+    results.append(new_result)
+
+  else:
+
+    results.Append(MetadataSearchResult(**new_result))
+
+####################################################################################################
+def DictToMovieMetadataObj(metadata_dict, metadata):
+
+  for attr_name, attr_obj in metadata.attrs.iteritems():
+
+    if attr_name not in metadata_dict:
+      continue
+
+    dict_value = metadata_dict[attr_name]
+
+    if isinstance(dict_value, list):
+
+      for val in dict_value:
+        attr_obj.add(val)
+
+    elif isinstance(dict_value, dict):
+
+      for k, v in dict_value.iteritems():
+        attr_obj[k] = v
+
+      if attr_name in ['posters', 'art', 'themes']:  # Can't access MapObject, so have to write these out
+        attr_obj.validate_keys(dict_value.keys())
+
+    else:
+      attr_obj.set(dict_value)
+
+####################################################################################################
+def PerformTMDbMovieSearch(results, media, lang, manual):
+
+  # If search is initiated by a different, primary metadata agent.
+  # This requires the other agent to use the IMDb id as key.
+  if media.primary_metadata is not None and RE_IMDB_ID.search(media.primary_metadata.id):
+    AppendSearchResult(results=results, id=media.primary_metadata.id, score=100)
+
+  else:
+    # If this a manual search (Fix Incorrect Match) and we get an IMDb id as input.
+    if manual and RE_IMDB_ID.search(media.name):
+      tmdb_dict = GetJSON(url=TMDB_MOVIE % (media.name, lang))
+
+      if isinstance(tmdb_dict, dict) and 'id' in tmdb_dict:
+        AppendSearchResult(results=results,
+                           id=str(tmdb_dict['id']),
+                           name=tmdb_dict['title'],
+                           year=int(tmdb_dict['release_date'].split('-')[0]),
+                           score=100,
+                           lang=lang)
+
+    # If this is an automatic search and The Movie Database agent is used as a primary agent.
+    else:
+      if media.year and int(media.year) > 1900:
+        year = media.year
+      else:
+        year = ''
+
+      include_adult = 'false'
+      if Prefs['adult']:
+        include_adult = 'true'
+
+      # Historically we've StrippedDiacritics() here, but this is a pretty aggressive function that won't pass
+      # anything that can't be encoded to ASCII, and as such has a tendency to nuke whole titles in, e.g., Asian
+      # languages (See GHI #26).  If we have a string that was modified by StripDiacritics() and we get no results,
+      # try the search again with the original.
+      #
+      stripped_name = String.StripDiacritics(media.name)
+      tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(stripped_name), year, lang, include_adult))
+      if media.name != stripped_name and (tmdb_dict == None or len(tmdb_dict['results']) == 0):
+        Log('No results for title modified by strip diacritics, searching again with the original: ' + media.name)
+        tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(media.name), year, lang, include_adult))
+
+      if isinstance(tmdb_dict, dict) and 'results' in tmdb_dict:
+        for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
+          score = 90
+          score = score - abs(String.LevenshteinDistance(movie['title'].lower(), media.name.lower()))
+
+          # Adjust score slightly for 'popularity' (helpful for similar or identical titles when no media.year is present)
+          score = score - (5 * i)
+
+          if 'release_date' in movie and movie['release_date']:
+            release_year = int(movie['release_date'].split('-')[0])
+          else:
+            release_year = None
+
+          if media.year and int(media.year) > 1900 and release_year:
+            year_diff = abs(int(media.year) - release_year)
+
+            if year_diff <= 1:
+              score = score + 10
+            else:
+              score = score - (5 * year_diff)
+
+          if score <= 0:
+            continue
+          else:
+            AppendSearchResult(results=results,
+                               id=str(movie['id']),
+                               name=movie['title'],
+                               year=release_year,
+                               score=score,
+                               lang=lang)
+
+####################################################################################################
+def PerformTMDbMovieUpdate(metadata_id, lang):
+
+  metadata = dict(id=metadata_id)
+
+  config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
+  tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata_id, lang))
+
+  if not isinstance(tmdb_dict, dict) or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None or tmdb_dict['overview'] == "":
+    # Retry the query with no language specified if we didn't get anything from the initial request.
+    tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata_id, ''))
+
+  # This additional request is necessary since full art/poster lists are not returned if they don't exactly match the language
+  tmdb_images_dict = GetJSON(url=TMDB_MOVIE_IMAGES % metadata_id)
+
+  if not isinstance(tmdb_dict, dict) or not isinstance(tmdb_images_dict, dict):
+    return None
+
+  # Rating.
+  votes = tmdb_dict['vote_count']
+  rating = tmdb_dict['vote_average']
+  if votes > 3:
+    metadata.rating = rating
+    metadata.audience_rating = 0.0
+
+  # Title of the film.
+  metadata['title'] = tmdb_dict['title']
+
+  if 'original_title' in tmdb_dict and tmdb_dict['original_title'] != tmdb_dict['title']:
+    metadata['original_title'] = tmdb_dict['original_title']
+
+  # Tagline.
+  metadata['tagline'] = tmdb_dict['tagline']
+
+  # Release date.
+  try:
+    metadata['originally_available_at'] = Datetime.ParseDate(tmdb_dict['release_date']).date()
+    metadata['year'] = metadata.originally_available_at.year
+  except:
+    pass
+
+  if Prefs['country'] != '':
+    c = Prefs['country']
+
+    for country in tmdb_dict['releases']['countries']:
+      if country['iso_3166_1'] == countrycode.COUNTRY_TO_CODE[c]:
+
+        # Content rating.
+        if 'certification' in country and country['certification'] != '':
+          if countrycode.COUNTRY_TO_CODE[c] == 'US':
+            metadata['content_rating'] = country['certification']
+          else:
+            metadata['content_rating'] = '%s/%s' % (countrycode.COUNTRY_TO_CODE[c].lower(), country['certification'])
+
+        # Release date (country specific).
+        if 'release_date' in country and country['release_date'] != '':
+          metadata['originally_available_at'] = Datetime.ParseDate(country['release_date']).date()
+          metadata['year'] = metadata['originally_available_at'].year
+
+        break
+
+  # Summary.
+  metadata['summary'] = tmdb_dict['overview']
+  if metadata['summary'] == 'No overview found.':
+    metadata['summary'] = ""
+
+  # Runtime.
+  try: metadata['duration'] = int(tmdb_dict['runtime']) * 60 * 1000
+  except: pass
+
+  # Genres.
+  metadata['genres'] = []
+  for genre in tmdb_dict['genres']:
+    metadata['genres'].append(genre['name'].strip())
+
+  # Collections.
+  metadata['collections'] = []
+  if Prefs['collections'] and tmdb_dict['belongs_to_collection'] is not None:
+    metadata['collections'].append(tmdb_dict['belongs_to_collection']['name'].replace(' Collection',''))
+
+  # Studio.
+  if 'production_companies' in tmdb_dict and len(tmdb_dict['production_companies']) > 0:
+    index = tmdb_dict['production_companies'][0]['id']
+    company = None
+
+    for studio in tmdb_dict['production_companies']:
+      if studio['id'] <= index:
+        index = studio['id']
+        company = studio['name'].strip()
+
+    metadata['studio'] = company
+
+  else:
+    metadata['studio'] = None
+
+  # Country.
+  metadata['countries'] = []
+  if 'production_countries' in tmdb_dict:
+    for country in tmdb_dict['production_countries']:
+      country = country['name'].replace('United States of America', 'USA')
+      metadata['countries'].append(country)
+
+  # Crew.
+  metadata['directors'] = []
+  metadata['writers'] = []
+  metadata['producers'] = []
+
+  for member in tmdb_dict['credits']['crew']:
+    if member['job'] == 'Director':
+      metadata['directors'].append(member['name'])
+    elif member['job'] in ('Writer', 'Screenplay'):
+      metadata['writers'].append(member['name'])
+    elif member['job'] == 'Producer':
+      metadata['producers'].append(member['name'])
+
+  # Cast.
+  metadata['roles'] = []
+
+  for member in sorted(tmdb_dict['credits']['cast'], key=lambda k: k['order']):
+    role = {}
+    role['role'] = member['character']
+    role['actor'] = member['name']
+    if member['profile_path'] is not None:
+      role['photo'] = config_dict['images']['base_url'] + 'original' + member['profile_path']
+
+  # Note: for TMDB artwork, number of votes is a good predictor of poster quality. Ratings are assigned
+  # using a Baysean average that appears to be poorly calibrated, so ratings are almost always between
+  # 5 and 6 or zero.  Consider both of these, weighting them according to the POSTER_SCORE_RATIO.
+
+  # No votes get zero, use TMDB's apparent initial Baysean prior mean of 5 instead.
+  valid_names = list()
+
+  metadata['posters'] = {}
+
+  if tmdb_images_dict['posters']:
+    max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['posters']])
+    max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['posters']]) or 1
+
+    for i, poster in enumerate(tmdb_images_dict['posters']):
+
+      score = (poster['vote_average'] / max_average) * POSTER_SCORE_RATIO
+      score += (poster['vote_count'] / max_count) * (1 - POSTER_SCORE_RATIO)
+      tmdb_images_dict['posters'][i]['score'] = score
+
+      # Boost the score for localized posters (according to the preference).
+      if Prefs['localart']:
+        if poster['iso_639_1'] == lang:
+          tmdb_images_dict['posters'][i]['score'] = poster['score'] + 1
+
+      # Discount score for foreign posters.
+      if poster['iso_639_1'] != lang and poster['iso_639_1'] is not None and poster['iso_639_1'] != 'en':
+        tmdb_images_dict['posters'][i]['score'] = poster['score'] - 1
+
+    for i, poster in enumerate(sorted(tmdb_images_dict['posters'], key=lambda k: k['score'], reverse=True)):
+      if i > ARTWORK_ITEM_LIMIT:
+        break
+      else:
+        poster_url = config_dict['images']['base_url'] + 'original' + poster['file_path']
+        thumb_url = config_dict['images']['base_url'] + 'w154' + poster['file_path']
+        valid_names.append(poster_url)
+
+        if poster_url not in metadata['posters']:
+          try: metadata['posters'][poster_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
+          except: pass
+
+  # metadata.posters.validate_keys(valid_names) TODO this needs to be done elsewhere
+
+  # Backdrops.
+  valid_names = list()
+  metadata['art'] = {}
+  if tmdb_images_dict['backdrops']:
+    max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['backdrops']])
+    max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['backdrops']]) or 1
+
+    for i, backdrop in enumerate(tmdb_images_dict['backdrops']):
+
+      score = (backdrop['vote_average'] / max_average) * BACKDROP_SCORE_RATIO
+      score += (backdrop['vote_count'] / max_count) * (1 - BACKDROP_SCORE_RATIO)
+      tmdb_images_dict['backdrops'][i]['score'] = score
+
+      # For backdrops, we prefer "No Language" since they're intended to sit behind text.
+      if backdrop['iso_639_1'] == 'xx' or backdrop['iso_639_1'] == 'none':
+        tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) + 2
+
+      # Boost the score for localized art (according to the preference).
+      if Prefs['localart']:
+        if backdrop['iso_639_1'] == lang:
+          tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) + 1
+
+      # Discount score for foreign art.
+      if backdrop['iso_639_1'] != lang and backdrop['iso_639_1'] is not None and backdrop['iso_639_1'] != 'en':
+        tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) - 1
+
+    for i, backdrop in enumerate(sorted(tmdb_images_dict['backdrops'], key=lambda k: k['score'], reverse=True)):
+      if i > ARTWORK_ITEM_LIMIT:
+        break
+      else:
+        backdrop_url = config_dict['images']['base_url'] + 'original' + backdrop['file_path']
+        thumb_url = config_dict['images']['base_url'] + 'w300' + backdrop['file_path']
+        valid_names.append(backdrop_url)
+
+        if backdrop_url not in metadata['art']:
+          try: metadata['art'][backdrop_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
+          except: pass
+
+  # metadata.art.validate_keys(valid_names) TODO this needs to be done elsewhere
+
+  return metadata
+
+####################################################################################################
 class TMDbAgent(Agent.Movies):
 
   name = 'The Movie Database'
@@ -105,281 +445,13 @@ class TMDbAgent(Agent.Movies):
 
   def search(self, results, media, lang, manual):
 
-    # If search is initiated by a different, primary metadata agent.
-    # This requires the other agent to use the IMDb id as key.
-    if media.primary_metadata is not None and RE_IMDB_ID.search(media.primary_metadata.id):
-      results.Append(MetadataSearchResult(
-        id = media.primary_metadata.id,
-        score = 100
-      ))
-    else:
-      # If this a manual search (Fix Incorrect Match) and we get an IMDb id as input.
-      if manual and RE_IMDB_ID.search(media.name):
-        tmdb_dict = GetJSON(url=TMDB_MOVIE % (media.name, lang))
-
-        if isinstance(tmdb_dict, dict) and 'id' in tmdb_dict:
-          results.Append(MetadataSearchResult(
-            id = str(tmdb_dict['id']),
-            name = tmdb_dict['title'],
-            year = int(tmdb_dict['release_date'].split('-')[0]),
-            score = 100,
-            lang = lang
-          ))
-
-      # If this is an automatic search and The Movie Database agent is used as a primary agent.
-      else:
-        if media.year and int(media.year) > 1900:
-          year = media.year
-        else:
-          year = ''
-
-        include_adult = 'false'
-        if Prefs['adult']:
-          include_adult = 'true'
-
-        # Historically we've StrippedDiacritics() here, but this is a pretty aggressive function that won't pass
-        # anything that can't be encoded to ASCII, and as such has a tendency to nuke whole titles in, e.g., Asian
-        # languages (See GHI #26).  If we have a string that was modified by StripDiacritics() and we get no results,
-        # try the search again with the original.
-        #
-        stripped_name = String.StripDiacritics(media.name)
-        tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(stripped_name), year, lang, include_adult))
-        if media.name != stripped_name and (tmdb_dict == None or len(tmdb_dict['results']) == 0):
-          Log('No results for title modified by strip diacritics, searching again with the original: ' + media.name)
-          tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(media.name), year, lang, include_adult))
-
-        if isinstance(tmdb_dict, dict) and 'results' in tmdb_dict:
-          for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
-            score = 90
-            score = score - abs(String.LevenshteinDistance(movie['title'].lower(), media.name.lower()))
-
-            # Adjust score slightly for 'popularity' (helpful for similar or identical titles when no media.year is present)
-            score = score - (5 * i)
-
-            if 'release_date' in movie and movie['release_date']:
-              release_year = int(movie['release_date'].split('-')[0])
-            else:
-              release_year = None
-
-            if media.year and int(media.year) > 1900 and release_year:
-              year_diff = abs(int(media.year) - release_year)
-
-              if year_diff <= 1:
-                score = score + 10
-              else:
-                score = score - (5 * year_diff)
-
-            if score <= 0:
-              continue
-            else:
-              results.Append(MetadataSearchResult(
-                id = str(movie['id']),
-                name = movie['title'],
-                year = release_year,
-                score = score,
-                lang = lang
-              ))
+    PerformTMDbMovieSearch(results, media, lang, manual)
 
   def update(self, metadata, media, lang):
 
-    config_dict = GetJSON(url=TMDB_CONFIG, cache_time=CACHE_1WEEK * 2)
-    tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata.id, lang))
+    metadata_dict = PerformTMDbMovieUpdate(metadata.id, lang)
 
-    if not isinstance(tmdb_dict, dict) or 'overview' not in tmdb_dict or tmdb_dict['overview'] is None or tmdb_dict['overview'] == "":
-      # Retry the query with no language specified if we didn't get anything from the initial request.
-      tmdb_dict = GetJSON(url=TMDB_MOVIE % (metadata.id, ''))
-
-    # This additional request is necessary since full art/poster lists are not returned if they don't exactly match the language
-    tmdb_images_dict = GetJSON(url=TMDB_MOVIE_IMAGES % metadata.id)
-
-    if not isinstance(tmdb_dict, dict) or not isinstance(tmdb_images_dict, dict):
-      return None
-
-    # Rating.
-    votes = tmdb_dict['vote_count']
-    rating = tmdb_dict['vote_average']
-    if votes > 3:
-      metadata.rating = rating
-      metadata.audience_rating = 0.0
-
-    # Title of the film.
-    metadata.title = tmdb_dict['title']
-
-    if 'original_title' in tmdb_dict and tmdb_dict['original_title'] != tmdb_dict['title']:
-      metadata.original_title = tmdb_dict['original_title']
-
-    # Tagline.
-    metadata.tagline = tmdb_dict['tagline']
-
-    # Release date.
-    try:
-      metadata.originally_available_at = Datetime.ParseDate(tmdb_dict['release_date']).date()
-      metadata.year = metadata.originally_available_at.year
-    except:
-      pass
-
-    if Prefs['country'] != '':
-      c = Prefs['country']
-
-      for country in tmdb_dict['releases']['countries']:
-        if country['iso_3166_1'] == countrycode.COUNTRY_TO_CODE[c]:
-
-          # Content rating.
-          if 'certification' in country and country['certification'] != '':
-            if countrycode.COUNTRY_TO_CODE[c] == 'US':
-              metadata.content_rating = country['certification']
-            else:
-              metadata.content_rating = '%s/%s' % (countrycode.COUNTRY_TO_CODE[c].lower(), country['certification'])
-
-          # Release date (country specific).
-          if 'release_date' in country and country['release_date'] != '':
-            metadata.originally_available_at = Datetime.ParseDate(country['release_date']).date()
-            metadata.year = metadata.originally_available_at.year
-
-          break
-
-    # Summary.
-    metadata.summary = tmdb_dict['overview']
-    if metadata.summary == 'No overview found.':
-      metadata.summary = ""
-
-    # Runtime.
-    try: metadata.duration = int(tmdb_dict['runtime']) * 60 * 1000
-    except: pass
-
-    # Genres.
-    metadata.genres.clear()
-    for genre in tmdb_dict['genres']:
-      metadata.genres.add(genre['name'].strip())
-
-    # Collections.
-    metadata.collections.clear()
-    if Prefs['collections'] and tmdb_dict['belongs_to_collection'] is not None:
-      metadata.collections.add(tmdb_dict['belongs_to_collection']['name'].replace(' Collection',''))
-
-    # Studio.
-    if 'production_companies' in tmdb_dict and len(tmdb_dict['production_companies']) > 0:
-      index = tmdb_dict['production_companies'][0]['id']
-
-      for studio in tmdb_dict['production_companies']:
-        if studio['id'] <= index:
-          index = studio['id']
-          company = studio['name'].strip()
-
-      metadata.studio = company
-
-    else:
-      metadata.studio = None
-
-    # Country.
-    metadata.countries.clear()
-    if 'production_countries' in tmdb_dict:
-      for country in tmdb_dict['production_countries']:
-        country = country['name'].replace('United States of America', 'USA')
-        metadata.countries.add(country)
-
-    # Crew.
-    metadata.directors.clear()
-    metadata.writers.clear()
-    metadata.producers.clear()
-
-    for member in tmdb_dict['credits']['crew']:
-      if member['job'] == 'Director':
-        metadata.directors.add(member['name'])
-      elif member['job'] in ('Writer', 'Screenplay'):
-        metadata.writers.add(member['name'])
-      elif member['job'] == 'Producer':
-        metadata.producers.add(member['name'])
-
-    # Cast.
-    metadata.roles.clear()
-
-    for member in sorted(tmdb_dict['credits']['cast'], key=lambda k: k['order']):
-      role = metadata.roles.new()
-      role.role = member['character']
-      role.actor = member['name']
-      if member['profile_path'] is not None:
-        role.photo = config_dict['images']['base_url'] + 'original' + member['profile_path']
-
-    # Note: for TMDB artwork, number of votes is a good predictor of poster quality. Ratings are assigned
-    # using a Baysean average that appears to be poorly calibrated, so ratings are almost always between
-    # 5 and 6 or zero.  Consider both of these, weighting them according to the POSTER_SCORE_RATIO.
-
-    # No votes get zero, use TMDB's apparent initial Baysean prior mean of 5 instead.
-    valid_names = list()
-
-    if tmdb_images_dict['posters']:
-      max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['posters']])
-      max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['posters']]) or 1
-
-      for i, poster in enumerate(tmdb_images_dict['posters']):
-
-        score = (poster['vote_average'] / max_average) * POSTER_SCORE_RATIO
-        score += (poster['vote_count'] / max_count) * (1 - POSTER_SCORE_RATIO)
-        tmdb_images_dict['posters'][i]['score'] = score
-
-        # Boost the score for localized posters (according to the preference).
-        if Prefs['localart']:
-          if poster['iso_639_1'] == lang:
-            tmdb_images_dict['posters'][i]['score'] = poster['score'] + 1
-
-        # Discount score for foreign posters.
-        if poster['iso_639_1'] != lang and poster['iso_639_1'] is not None and poster['iso_639_1'] != 'en':
-          tmdb_images_dict['posters'][i]['score'] = poster['score'] - 1
-
-      for i, poster in enumerate(sorted(tmdb_images_dict['posters'], key=lambda k: k['score'], reverse=True)):
-        if i > ARTWORK_ITEM_LIMIT:
-          break
-        else:
-          poster_url = config_dict['images']['base_url'] + 'original' + poster['file_path']
-          thumb_url = config_dict['images']['base_url'] + 'w154' + poster['file_path']
-          valid_names.append(poster_url)
-
-          if poster_url not in metadata.posters:
-            try: metadata.posters[poster_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
-            except: pass
-
-    metadata.posters.validate_keys(valid_names)
-
-    # Backdrops.
-    valid_names = list()
-
-    if tmdb_images_dict['backdrops']:
-      max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_images_dict['backdrops']])
-      max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_images_dict['backdrops']]) or 1
-
-      for i, backdrop in enumerate(tmdb_images_dict['backdrops']):
-
-        score = (backdrop['vote_average'] / max_average) * BACKDROP_SCORE_RATIO
-        score += (backdrop['vote_count'] / max_count) * (1 - BACKDROP_SCORE_RATIO)
-        tmdb_images_dict['backdrops'][i]['score'] = score
-
-        # For backdrops, we prefer "No Language" since they're intended to sit behind text.
-        if backdrop['iso_639_1'] == 'xx' or backdrop['iso_639_1'] == 'none':
-          tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) + 2
-
-        # Boost the score for localized art (according to the preference).
-        if Prefs['localart']:
-          if backdrop['iso_639_1'] == lang:
-            tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) + 1
-
-        # Discount score for foreign art.
-        if backdrop['iso_639_1'] != lang and backdrop['iso_639_1'] is not None and backdrop['iso_639_1'] != 'en':
-          tmdb_images_dict['backdrops'][i]['score'] = float(backdrop['score']) - 1
-
-      for i, backdrop in enumerate(sorted(tmdb_images_dict['backdrops'], key=lambda k: k['score'], reverse=True)):
-        if i > ARTWORK_ITEM_LIMIT:
-          break
-        else:
-          backdrop_url = config_dict['images']['base_url'] + 'original' + backdrop['file_path']
-          thumb_url = config_dict['images']['base_url'] + 'w300' + backdrop['file_path']
-          valid_names.append(backdrop_url)
-
-          if backdrop_url not in metadata.art:
-            try: metadata.art[backdrop_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
-            except: pass
-
-    metadata.art.validate_keys(valid_names)
+    DictToMovieMetadataObj(metadata_dict, metadata)
 
 ####################################################################################################
 class TMDbAgent(Agent.TV_Shows):
@@ -729,3 +801,17 @@ class TMDbAgent(Agent.TV_Shows):
                   pass
 
             episode.thumbs.validate_keys(valid_names)
+
+####################################################################################################
+class FakeMediaObj():
+
+  def __init__(self, id, name, year):
+    self.name = name
+    self.year = year
+    self.primary_metadata = FakePrimaryMetadataObj(id)
+
+####################################################################################################
+class FakePrimaryMetadataObj():
+
+  def __init__(self, id):
+    self.id = id
