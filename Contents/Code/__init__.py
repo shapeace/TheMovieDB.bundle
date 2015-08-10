@@ -142,11 +142,23 @@ def DictToMovieMetadataObj(metadata_dict, metadata):
 
     elif isinstance(dict_value, dict):
 
-      for k, v in dict_value.iteritems():
-        attr_obj[k] = v
-
       if attr_name in ['posters', 'art', 'themes']:  # Can't access MapObject, so have to write these out
+
+        for k, v in dict_value.iteritems():
+          if isinstance(v, tuple):
+            attr_obj[k] = Proxy.Preview(HTTP.Request(v[0]).content, sort_order=v[1])
+          else:
+            attr_obj[k] = v
+
         attr_obj.validate_keys(dict_value.keys())
+
+      else:
+        for k, v in dict_value.iteritems():
+          attr_obj[k] = v
+
+    elif attr_name is 'originally_available_at':
+
+      attr_obj.set(Datetime.FromTimestamp(dict_value))
 
     else:
       attr_obj.set(dict_value)
@@ -261,8 +273,9 @@ def PerformTMDbMovieUpdate(metadata_id, lang):
 
   # Release date.
   try:
-    metadata['originally_available_at'] = Datetime.ParseDate(tmdb_dict['release_date']).date()
-    metadata['year'] = metadata.originally_available_at.year
+    originally_available_at_date_obj = Datetime.ParseDate(tmdb_dict['release_date']).date()
+    metadata['originally_available_at'] = Datetime.TimestampFromDatetime(originally_available_at_date_obj)
+    metadata['year'] = metadata.originally_available_at_date_obj.year
   except:
     pass
 
@@ -281,8 +294,9 @@ def PerformTMDbMovieUpdate(metadata_id, lang):
 
         # Release date (country specific).
         if 'release_date' in country and country['release_date'] != '':
-          metadata['originally_available_at'] = Datetime.ParseDate(country['release_date']).date()
-          metadata['year'] = metadata['originally_available_at'].year
+          originally_available_at_date_obj = Datetime.ParseDate(country['release_date']).date()
+          metadata['originally_available_at'] = Datetime.TimestampFromDatetime(originally_available_at_date_obj)
+          metadata['year'] = originally_available_at_date_obj.year
 
         break
 
@@ -387,10 +401,8 @@ def PerformTMDbMovieUpdate(metadata_id, lang):
         valid_names.append(poster_url)
 
         if poster_url not in metadata['posters']:
-          try: metadata['posters'][poster_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
+          try: metadata['posters'][poster_url] = (thumb_url, i+1)
           except: pass
-
-  # metadata.posters.validate_keys(valid_names) TODO this needs to be done elsewhere
 
   # Backdrops.
   valid_names = list()
@@ -427,10 +439,8 @@ def PerformTMDbMovieUpdate(metadata_id, lang):
         valid_names.append(backdrop_url)
 
         if backdrop_url not in metadata['art']:
-          try: metadata['art'][backdrop_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
+          try: metadata['art'][backdrop_url] = (thumb_url, i+1)
           except: pass
-
-  # metadata.art.validate_keys(valid_names) TODO this needs to be done elsewhere
 
   return metadata
 
