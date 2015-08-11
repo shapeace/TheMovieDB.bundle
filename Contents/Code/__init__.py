@@ -200,6 +200,7 @@ class TMDbAgent(Agent.Movies):
     rating = tmdb_dict['vote_average']
     if votes > 3:
       metadata.rating = rating
+      metadata.audience_rating = 0.0
 
     # Title of the film.
     metadata.title = tmdb_dict['title']
@@ -486,6 +487,7 @@ class TMDbAgent(Agent.TV_Shows):
     rating = tmdb_dict['vote_average']
     if votes > 3:
       metadata.rating = rating
+      metadata.audience_rating = 0.0
 
     # Name of the show.
     metadata.title = tmdb_dict['name']
@@ -680,6 +682,7 @@ class TMDbAgent(Agent.TV_Shows):
             rating = tmdb_episode_dict['vote_average']
             if votes > 3:
               episode.rating = rating
+              episode.audience_rating = 0.0
 
             # Name of the episode.
             episode.title = tmdb_episode_dict['name']
