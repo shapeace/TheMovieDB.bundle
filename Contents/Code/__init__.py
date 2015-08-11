@@ -84,13 +84,13 @@ def GetTvRageId(tmdb_id):
 
 ####################################################################################################
 @expose
-def GetTMDbSearchResults(id, name, year, lang, manual):
+def GetTMDbSearchResults(id, name, year, lang, manual, get_imdb_id):
 
   # TODO sanity checks on input vars
 
   media = FakeMediaObj(id, name, year)
   results = []
-  PerformTMDbMovieSearch(results, media, lang, manual)
+  PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id)
 
   return results if len(results) > 0 else None
 
@@ -113,7 +113,7 @@ def GetJSON(url, cache_time=CACHE_1MONTH):
   return tmdb_dict
 
 ####################################################################################################
-def AppendSearchResult(results, id, name=None, year=None, score=0, lang=None):
+def AppendSearchResult(results, id, name=None, year=-1, score=0, lang=None):
 
   new_result = dict(id=str(id), name=name, year=int(year), score=score, lang=lang)
 
@@ -164,7 +164,7 @@ def DictToMovieMetadataObj(metadata_dict, metadata):
       attr_obj.set(dict_value)
 
 ####################################################################################################
-def PerformTMDbMovieSearch(results, media, lang, manual):
+def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
 
   # If search is initiated by a different, primary metadata agent.
   # This requires the other agent to use the IMDb id as key.
@@ -177,8 +177,14 @@ def PerformTMDbMovieSearch(results, media, lang, manual):
       tmdb_dict = GetJSON(url=TMDB_MOVIE % (media.name, lang))
 
       if isinstance(tmdb_dict, dict) and 'id' in tmdb_dict:
+
+        if get_imdb_id and 'imdb_id' in tmdb_dict and RE_IMDB_ID.search(tmdb_dict['imdb_id']):
+          id = str(tmdb_dict['imdb_id'])
+        else:
+          id = str(tmdb_dict['id'])
+
         AppendSearchResult(results=results,
-                           id=str(tmdb_dict['id']),
+                           id=id,
                            name=tmdb_dict['title'],
                            year=int(tmdb_dict['release_date'].split('-')[0]),
                            score=100,
@@ -217,7 +223,7 @@ def PerformTMDbMovieSearch(results, media, lang, manual):
           if 'release_date' in movie and movie['release_date']:
             release_year = int(movie['release_date'].split('-')[0])
           else:
-            release_year = None
+            release_year = -1
 
           if media.year and int(media.year) > 1900 and release_year:
             year_diff = abs(int(media.year) - release_year)
@@ -230,8 +236,14 @@ def PerformTMDbMovieSearch(results, media, lang, manual):
           if score <= 0:
             continue
           else:
+
+            if get_imdb_id and 'imdb_id' in movie and RE_IMDB_ID.search(movie['imdb_id']):
+              id = str(movie['imdb_id'])
+            else:
+              id = str(movie['id'])
+
             AppendSearchResult(results=results,
-                               id=str(movie['id']),
+                               id=id,
                                name=movie['title'],
                                year=release_year,
                                score=score,
