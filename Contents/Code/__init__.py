@@ -181,7 +181,7 @@ def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
         if get_imdb_id and 'imdb_id' in tmdb_dict and RE_IMDB_ID.search(tmdb_dict['imdb_id']):
           id = str(tmdb_dict['imdb_id'])
         else:
-          id = str(tmdb_dict['id'])
+          id = GetImdbId(str(tmdb_dict['id']), lang) or tmdb_dict['id']
 
         AppendSearchResult(results=results,
                            id=id,
@@ -213,6 +213,9 @@ def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
         tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(media.name), year, lang, include_adult))
 
       if isinstance(tmdb_dict, dict) and 'results' in tmdb_dict:
+
+        Log('MAXGDEBUG: All TMDb Results = %s' % tmdb_dict['results'])
+
         for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
           score = 90
           score = score - abs(String.LevenshteinDistance(movie['title'].lower(), media.name.lower()))
@@ -240,7 +243,7 @@ def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
             if get_imdb_id and 'imdb_id' in movie and RE_IMDB_ID.search(movie['imdb_id']):
               id = str(movie['imdb_id'])
             else:
-              id = str(movie['id'])
+              id = GetImdbId(str(movie['id']), lang) or movie['id']
 
             AppendSearchResult(results=results,
                                id=id,
