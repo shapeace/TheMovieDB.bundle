@@ -137,6 +137,7 @@ def DictToMovieMetadataObj(metadata_dict, metadata):
 
     if isinstance(dict_value, list):
 
+      attr_obj.clear()
       for val in dict_value:
         attr_obj.add(val)
 
@@ -213,8 +214,6 @@ def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
         tmdb_dict = GetJSON(url=TMDB_MOVIE_SEARCH % (String.Quote(media.name), year, lang, include_adult))
 
       if isinstance(tmdb_dict, dict) and 'results' in tmdb_dict:
-
-        Log('MAXGDEBUG: All TMDb Results = %s' % tmdb_dict['results'])
 
         for i, movie in enumerate(sorted(tmdb_dict['results'], key=lambda k: k['popularity'], reverse=True)):
           score = 90
