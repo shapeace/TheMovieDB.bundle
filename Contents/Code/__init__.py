@@ -682,7 +682,6 @@ class TMDbAgent(Agent.TV_Shows):
             rating = tmdb_episode_dict['vote_average']
             if votes > 3:
               episode.rating = rating
-              episode.audience_rating = 0.0
 
             # Name of the episode.
             episode.title = tmdb_episode_dict['name']
