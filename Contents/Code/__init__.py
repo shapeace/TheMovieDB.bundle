@@ -86,8 +86,6 @@ def GetTvRageId(tmdb_id):
 @expose
 def GetTMDbSearchResults(id, name, year, lang, manual, get_imdb_id):
 
-  # TODO sanity checks on input vars
-
   media = FakeMediaObj(id, name, year)
   results = []
   PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id)
@@ -163,6 +161,21 @@ def DictToMovieMetadataObj(metadata_dict, metadata):
 
     else:
       attr_obj.set(dict_value)
+
+  # Roles is a special kind of object
+  if 'roles' in metadata_dict:
+    metadata.roles.clear()
+
+    for role in metadata_dict['roles']:
+      meta_role = metadata.roles.new()
+      if 'role' in role:
+        meta_role.role = role['role']
+
+      if 'actor' in role:
+        meta_role.actor = role['actor']
+
+      if 'profile_path' in role:
+        meta_role.photo = role['photo']
 
 ####################################################################################################
 def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
@@ -363,7 +376,7 @@ def PerformTMDbMovieUpdate(metadata_id, lang):
   for member in tmdb_dict['credits']['crew']:
     if member['job'] == 'Director':
       metadata['directors'].append(member['name'])
-    elif member['job'] in ('Writer', 'Screenplay'):
+    elif member['job'] in ('Writer', 'Screenplay', 'Author'):
       metadata['writers'].append(member['name'])
     elif member['job'] == 'Producer':
       metadata['producers'].append(member['name'])
@@ -377,6 +390,7 @@ def PerformTMDbMovieUpdate(metadata_id, lang):
     role['actor'] = member['name']
     if member['profile_path'] is not None:
       role['photo'] = config_dict['images']['base_url'] + 'original' + member['profile_path']
+    metadata['roles'].append(role)
 
   # Note: for TMDB artwork, number of votes is a good predictor of poster quality. Ratings are assigned
   # using a Baysean average that appears to be poorly calibrated, so ratings are almost always between
