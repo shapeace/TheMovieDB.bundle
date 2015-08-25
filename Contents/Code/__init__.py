@@ -192,10 +192,13 @@ def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
 
       if isinstance(tmdb_dict, dict) and 'id' in tmdb_dict:
 
-        if get_imdb_id and 'imdb_id' in tmdb_dict and RE_IMDB_ID.search(tmdb_dict['imdb_id']):
-          id = str(tmdb_dict['imdb_id'])
+        if get_imdb_id:
+          if 'imdb_id' in tmdb_dict and RE_IMDB_ID.search(tmdb_dict['imdb_id']):
+            id = str(tmdb_dict['imdb_id'])
+          else:
+            id = GetImdbId(tmdb_dict['id'], lang) or tmdb['id']
         else:
-          id = GetImdbId(str(tmdb_dict['id']), lang) or tmdb_dict['id']
+          id = tmdb_dict['id']
 
         AppendSearchResult(results=results,
                            id=id,
@@ -252,10 +255,13 @@ def PerformTMDbMovieSearch(results, media, lang, manual, get_imdb_id=False):
             continue
           else:
 
-            if get_imdb_id and 'imdb_id' in movie and RE_IMDB_ID.search(movie['imdb_id']):
-              id = str(movie['imdb_id'])
+            if get_imdb_id:
+              if 'imdb_id' in movie and RE_IMDB_ID.search(movie['imdb_id']):
+                id = str(movie['imdb_id'])
+              else:
+                id = GetImdbId(movie['id'], lang) or movie['id']
             else:
-              id = GetImdbId(str(movie['id']), lang) or movie['id']
+              id = movie['id']
 
             AppendSearchResult(results=results,
                                id=id,
