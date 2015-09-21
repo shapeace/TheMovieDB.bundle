@@ -20,7 +20,7 @@ TMDB_MOVIE_IMAGES = '%s/movie/%%s/images?api_key=%s' % (BASE_URL, API_KEY)
 TMDB_TV_SEARCH = '%s/search/tv?api_key=%s&query=%%s&year=%%s&language=%%s&include_adult=%%s' % (BASE_URL, API_KEY)
 TMDB_TV = '%s/tv/%%s?api_key=%s&append_to_response=credits&language=%%s' % (BASE_URL, API_KEY)
 TMDB_TV_SEASON = '%s/tv/%%s/season/%%s?api_key=%s&language=%%s' % (BASE_URL, API_KEY)
-TMDB_TV_EPISODE = '%s/tv/%%s/season/%%s/episode/%%s?api_key=%s&append_to_response=credits&language=%%s' % (BASE_URL, API_KEY)
+TMDB_TV_EPISODE = '%s/tv/%%s/season/%%s/episode/%%s?api_key=%s&append_to_response=credits,images&language=%%s' % (BASE_URL, API_KEY)
 TMDB_TV_IMAGES = '%s/tv/%%s/images?api_key=%s' % (BASE_URL, API_KEY)
 TMDB_TV_EXTERNAL_IDS = '%s/tv/%%s/external_ids?api_key=%s' % (BASE_URL, API_KEY)
 TMDB_TV_TVDB = '%s/tv/find/%%s?api_key=%s&external_source=tvdb_id' % (BASE_URL, API_KEY)
@@ -28,6 +28,7 @@ TMDB_TV_TVDB = '%s/tv/find/%%s?api_key=%s&external_source=tvdb_id' % (BASE_URL, 
 ARTWORK_ITEM_LIMIT = 15
 POSTER_SCORE_RATIO = .3 # How much weight to give ratings vs. vote counts when picking best posters. 0 means use only ratings.
 BACKDROP_SCORE_RATIO = .3
+STILLS_SCORE_RATIO = .3
 RE_IMDB_ID = Regex('^tt\d{7}$')
 
 # TMDB does not seem to have an official set of supported languages.  Users can register and 'translate'
@@ -844,16 +845,28 @@ class TMDbAgent(Agent.TV_Shows):
             # Episode still.
             valid_names = list()
 
-            if 'still_path' in tmdb_episode_dict and tmdb_episode_dict['still_path']:
-              still_url = config_dict['images']['base_url'] + 'original' + tmdb_episode_dict['still_path']
-              thumb_url = config_dict['images']['base_url'] + 'w154' + tmdb_episode_dict['still_path']
-              valid_names.append(still_url)
+            # Check if there are stills present and then loop through them
+            if tmdb_episode_dict['images']['stills']:
+              max_average = max([(lambda p: p['vote_average'] or 5)(p) for p in tmdb_episode_dict['images']['stills']])
+              max_count = max([(lambda p: p['vote_count'])(p) for p in tmdb_episode_dict['images']['stills']]) or 1
 
-              if still_url not in episode.thumbs:
-                try:
-                  episode.thumbs[still_url] = Proxy.Preview(HTTP.Request(thumb_url).content)
-                except:
-                  pass
+              for i, still in enumerate(tmdb_episode_dict['images']['stills']):
+
+                score = (still['vote_average'] / max_average) * STILLS_SCORE_RATIO
+                score += (still['vote_count'] / max_count) * (1 - STILLS_SCORE_RATIO)
+                tmdb_episode_dict['images']['stills'][i]['score'] = score
+
+              for i, still in enumerate(sorted(tmdb_episode_dict['images']['stills'], key=lambda k: k['score'], reverse=True)):
+                if i > ARTWORK_ITEM_LIMIT:
+                  break
+                else:
+                  still_url = config_dict['images']['base_url'] + 'original' + still['file_path']
+                  thumb_url = config_dict['images']['base_url'] + 'w154' + still['file_path']
+                  valid_names.append(still_url)
+
+                  if still_url not in episode.thumbs:
+                    try: episode.thumbs[still_url] = Proxy.Preview(HTTP.Request(thumb_url).content, sort_order=i+1)
+                    except: pass
 
             episode.thumbs.validate_keys(valid_names)
 
