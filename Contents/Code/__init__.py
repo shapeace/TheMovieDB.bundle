@@ -157,10 +157,10 @@ def DictToMovieMetadataObj(metadata_dict, metadata):
 
     elif attr_name is 'originally_available_at':
 
-      attr_obj.set(Datetime.FromTimestamp(dict_value))
+      attr_obj.setcontent(Datetime.FromTimestamp(dict_value))
 
     else:
-      attr_obj.set(dict_value)
+      attr_obj.setcontent(dict_value)
 
   # Roles is a special kind of object
   if 'roles' in metadata_dict:
