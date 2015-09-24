@@ -126,6 +126,13 @@ def AppendSearchResult(results, id, name=None, year=-1, score=0, lang=None):
 ####################################################################################################
 def DictToMovieMetadataObj(metadata_dict, metadata):
 
+  try:
+    if not metadata or not metadata.attrs:
+      return
+  except AttributeError:
+    Log('WARNING: Framework not new enough to use One True Agent')  # TODO: add a more official log message about version number when available
+    return
+
   for attr_name, attr_obj in metadata.attrs.iteritems():
 
     if attr_name not in metadata_dict:
