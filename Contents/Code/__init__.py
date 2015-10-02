@@ -299,8 +299,8 @@ def PerformTMDbMovieUpdate(metadata_id, lang):
   votes = tmdb_dict['vote_count']
   rating = tmdb_dict['vote_average']
   if votes > 3:
-    metadata.rating = rating
-    metadata.audience_rating = 0.0
+    metadata['rating'] = rating
+    metadata['audience_rating'] = 0.0
 
   # Title of the film.
   metadata['title'] = tmdb_dict['title']
