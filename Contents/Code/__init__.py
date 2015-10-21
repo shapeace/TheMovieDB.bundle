@@ -305,6 +305,8 @@ def PerformTMDbMovieUpdate(metadata_id, lang):
   if votes > 3:
     metadata['rating'] = rating
     metadata['audience_rating'] = 0.0
+    metadata['rating_image'] = None
+    metadata['audience_rating_image'] = None
 
   # Title of the film.
   metadata['title'] = tmdb_dict['title']
